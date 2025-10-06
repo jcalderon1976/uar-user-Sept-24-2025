@@ -1,0 +1,48 @@
+<ion-content class="tab2Header">
+  <ion-item lines="none">
+    <ion-label class="center-label history-title">Ride History</ion-label>
+  </ion-item>
+  
+  <ion-card *ngIf="rides.length === 0">
+    <ion-card-content>
+      No tienes historial de viajes aún.
+    </ion-card-content>
+  </ion-card>
+  <ion-card *ngFor="let ride of rides" class="ion-no-padding ion-padding-vertical history-card"  (click)="showInfo(ride)">
+    
+    <ion-item class="history-item" lines="none">
+       <ion-grid>
+        <ion-row>
+          <ion-col size="9">
+            <div class="date location-text">
+              <ion-chip color="medium">{{ ride.distance }} km</ion-chip>
+              <ion-icon name="calendar" color="favorite"></ion-icon>
+               <ion-text>
+                 <span *ngIf="ride && ride.createdAt"> {{ ride.createdAt.toDate()  | date }}</span>
+                 <span *ngIf="!ride || !ride.createdAt">Date not available</span>
+               </ion-text> 
+             </div>
+          </ion-col>
+          <ion-col size="3">
+            <div class="price" > {{ ride.totalFare | currency:'USD':'symbol':'1.2-2'}} </div>
+          </ion-col>
+       </ion-row>
+
+       <ion-row>
+        <ion-col size="1"><ion-icon name="chevron-down-circle" color="favorite" ></ion-icon>&nbsp;</ion-col>
+        <ion-col size="11"><ion-text class="location-text" color="dark">     {{ ride.origin_address }}</ion-text></ion-col>
+       </ion-row>
+
+       <ion-row>
+        <ion-col size="1"><ion-icon name="chevron-up-circle"  color="success" ></ion-icon>&nbsp;</ion-col>
+        <ion-col size="11"><ion-text class="location-text" color="dark">    {{ ride.destination_address }}</ion-text></ion-col>
+       </ion-row>
+
+      </ion-grid> 
+    </ion-item>
+  </ion-card>
+  <ion-infinite-scroll threshold="100px" (ionInfinite)="loadMore($event)">
+    <ion-infinite-scroll-content loadingSpinner="bubbles" loadingText="Loading more data...">
+    </ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+</ion-content>

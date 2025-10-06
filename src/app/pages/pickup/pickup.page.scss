@@ -1,0 +1,318 @@
+:host {
+  --primary-grad: linear-gradient(90deg, #6a00ff, #9c27ff);
+}
+
+.hdr {
+  &::after { display: none; } // sin hairline
+}
+.hdr-toolbar {
+  --background: transparent;
+  padding-inline: 8px;
+
+  .status-pills {
+    margin: 8px auto 0;
+    display: grid;
+    grid-auto-flow: column;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.8);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.08);
+  }
+  .pill {
+    display: grid; grid-auto-flow: column; gap: 8px; align-items: center;
+    .pill-top { font-weight: 700; font-size: 16px; line-height: 1; }
+    .pill-sub { font-size: 11px; opacity: .7; line-height: 1; }
+    ion-icon { font-size: 18px; opacity: .9; }
+  }
+  .divider {
+    width: 1px; height: 22px; background: rgba(0,0,0,.1);
+  }
+}
+
+.page {
+  --background: #f7f8fb;
+}
+.map-wrap {
+  position: relative;
+  height: 48vh;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  overflow: hidden;
+}
+.map-wrap .map { position: absolute; inset: 0; }
+
+/* Quitar borde/sombra del chip base */
+.floating-chips ion-chip::part(container) {
+  border: 0;
+  box-shadow: none;
+}
+
+/* También si usas outline */
+.floating-chips ion-chip[outline]::part(container) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Posicionamiento arriba a la derecha */
+.floating-chips-right {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 75%);
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none; /* no bloquear el mapa */
+}
+
+/* Posicionamiento arriba a la derecha */
+.floating-chips-left{ 
+  position: absolute; 
+  top: calc(env(safe-area-inset-top) + 75%); /* respeta notch */ 
+  left: 12px; 
+  right: auto; 
+  bottom: auto; 
+  display: flex; 
+  gap: 8px; 
+  z-index: 10; 
+  pointer-events: none; /* que no bloquee el mapa */ 
+}
+
+
+/* Estilos del chip ETA */
+.eta-chip {
+  
+  pointer-events: auto; /* el chip sí es clickeable */
+  --background: rgba(239,242,247,.55);
+  background: rgba(199,201,221,.55);
+  --color: #1b1b1b;
+  --padding-start: 10px;
+  --padding-end: 12px;
+  --ion-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif) !important;
+
+}
+
+/* Contenedor visual del chip */
+.eta-chip::part(container) {
+  background: rgba(239,242,247,.55);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  align-items: center;
+}
+
+/* Icono */
+.eta-chip ion-icon {
+  font-size: 20px;
+  margin-right: 8px;
+  opacity: .9;
+}
+
+/* Copia en columnas para apilado vertical */
+.eta-copy {
+ 
+  display: grid;
+  line-height: 1;
+  
+}
+
+/* "Llega en" */
+.eta-small {
+ 
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: .01em;
+}
+
+/* "8 MIN" */
+.eta-big {
+  margin-top: 2px;
+  font-size: 28px;
+  font-weight: 400;
+}
+.eta-big strong { font-weight: 400; }
+
+.eta-unit {
+  margin-left: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+/* "1.0 millas" */
+.eta-distance {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280; /* gris */
+}
+
+.sheet {
+  position: relative;
+  margin: -14px 12px 16px;
+  border-top-right-radius: 20px;
+  border-top-left-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.08);
+
+  ion-card-content { padding: 16px; }
+}
+
+.driver-row {
+  display: grid;
+  grid-template-columns: 86px 1fr auto;
+  align-items: center;
+  gap: 12px;
+
+  .driver-avatar { 
+    width: 86px; 
+    height: 86px; 
+     /* anillo blanco + sombra suave + hairline sutil */
+    box-shadow:
+      0 0 0 3px rgba(255,255,255,0.95),  /* anillo blanco exterior */
+      inset 0 0 0 1px rgba(0,0,0,0.06),  /* hairline */
+      0 6px 18px rgba(0,0,0,0.12);       /* sombra suave */ 
+    }
+  .driver-name { font-weight: 400; font-size: 23px; }
+  .driver-rating { color: #3b3939; display: flex; align-items: center; gap: 6px; }
+  .star { color: #FFB300; font-size: x-large; }
+  .driver-cta ion-button { --padding-start: 6px; --padding-end: 6px; }
+}
+
+.driver-main{
+  padding-bottom: 20px;
+}
+
+.driver-meta {
+  margin-top: 6px;
+  color: #6d6d6d;
+  display: flex; gap: 6px; flex-wrap: wrap;
+  .dot { opacity: .45; }
+  font-size: 14px;
+}
+
+.addr {
+  display: grid; grid-template-columns: 22px 1fr; gap: 10px;
+  margin-top: 14px;
+
+  .addr-text label { font-size: 20px; color: #3d3b3b; }
+  .pickup { color: #7247EE; }
+  .dropoff { color: #7247EE; }
+}
+.ellipsis-2 {
+  display: -webkit-box; 
+  -webkit-box-orient:   vertical; 
+  overflow: hidden;
+}
+
+.metrics {
+  margin: 14px 0 6px;
+  display: flex; gap: 8px;
+  ion-chip { --background: rgba(106,0,255,.08); --color: #35205a; --border-color: transparent; }
+}
+
+
+
+/* Modo oscuro */
+@media (prefers-color-scheme: dark) {
+  .page { --background: #0f1115; }
+  .sheet { 
+    background: #EFF2F7;
+    border-radius: 24px 24px 16px 16px;/* más redondeado arriba */
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,.06),  /* hairline tenue */
+      0 16px 40px rgba(0,0,0,.14);      /* sombra suave */
+    /* Si quieres solo las esquinas de arriba redondeadas: */
+    /* border-radius: 24px 24px 0 0; */
+
+    /* Truco de “ring” blanco muy sutil (opcional) */
+    outline: 6px solid rgba(255,255,255,.35);
+    outline-offset: -6px;
+  }
+  .driver-meta, .addr-text label { color: #9aa3af; }
+  .cancel-btn { --background: #ef4444; } /* un poco más visible en dark */
+}
+
+
+.driver-cta{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:center;
+}
+
+/* ---- ion-button host: transparente y sin “cuadro” ---- */
+.bubble-btn{
+  /* el host no pinta nada */
+  --background: transparent;
+  --box-shadow: none;
+  --border-radius: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+
+  /* evita que el host “fuerce” un rectángulo */
+  width: auto;
+  height: auto;
+}
+
+/* ---- Solo el botón interno (círculo) pinta ---- */
+.bubble-btn::part(native){
+  width: 40px;
+  height: 40px;
+  background: #fff;             /* fondo del círculo */
+  border-radius: 50%;           /* círculo perfecto */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* anillo blanco + sombra suave + hairline sutil */
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,0.95),  /* anillo blanco exterior */
+    inset 0 0 0 1px rgba(0,0,0,0.06),  /* hairline */
+    0 6px 18px rgba(0,0,0,0.12);       /* sombra suave */
+}
+
+/* Icono un poco más grande y oscuro */
+.bubble-btn ion-icon{
+  font-size: 19px;
+  opacity: 0.9;
+  color: #1b1b1b;
+}
+
+
+.cancel-button{
+   --border-radius: 15px; // Set your custom radius here (e.g., 5px, 10px, 50px...)
+   --border-width: .5px; // Optional for outline
+   font-size: 14px;             
+   font-family: 'Cambai Minimalist', sans-serif;
+   //font-weight: 600;
+   letter-spacing: 8.5px;
+   text-transform: true;  // disables Ionic default capitalization
+   --background: linear-gradient(45deg, #510D99,  #000000)!important;
+   --background-hover: linear-gradient(45deg, #000000, #510D99) !important;
+   --background-activated: linear-gradient(45deg, #510D99, #000000) !important;
+   --ripple-color: transparent !important; /* Elimina la onda azul */
+   --color: white;
+   font-weight: bold;
+   text-transform: uppercase;
+   padding: 3%;
+   //width: calc(100% - 40px); /* padding horizontal */
+ }
+
+ .cancel-button:active {
+   transform: scale(0.98);
+   transition: transform 0.1s ease-in-out;
+ }
+
+
+ .cancel-btn {
+  --background: #1c1c1e;
+  --border-radius: 14px;
+  height: 48px;
+  margin-top: 8px;
+}
+.locationImage{
+  width: 26px; 
+  height: 26px; 
+}

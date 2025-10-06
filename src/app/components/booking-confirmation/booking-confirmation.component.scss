@@ -1,0 +1,67 @@
+/* Cubre toda la pantalla por encima de todo */
+.loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000; /* fallback si el GIF tiene transparencias */
+  overflow: hidden;
+}
+
+/* El GIF se estira para cubrir (como background-size: cover) */
+.loader-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;       /* clave para cubrir */
+  object-position: center; /* centrado */
+  pointer-events: none;
+  user-select: none;
+}
+
+
+
+/* Estilo del texto del mensaje */
+.loader-text {
+  color: #e6e9ff;
+  font-size: 24px;
+  line-height: 1.2;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.35); /* mejora legibilidad sobre el GIF */
+  padding: 8px 14px;
+  border-radius: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.loader-bottom {
+  position: absolute;
+  left: 0; right: 0; bottom: 24px;
+  display: grid; gap: 6px; justify-items: center;
+  padding: 0 16px;
+}
+
+.loader-title {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-weight: 600;              /* semibold para jerarquía */
+  font-size: 24px;               /* 18–20px queda premium */
+  line-height: 1.25;
+  color: #f5f7ff;
+  text-align: center;
+  letter-spacing: 0.2px;
+  text-shadow: 0 2px 6px rgba(0,0,0,.45); /* legibilidad sobre el GIF */
+}
+
+/* Si quieres título serif “editorial”, descomenta:
+.loader-title { font-family: 'Playfair Display', serif; font-weight: 600; }
+*/
+
+.loader-sub {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.25;
+  color: #dbe1ff;
+  text-align: center;
+  opacity: .95;
+  text-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+

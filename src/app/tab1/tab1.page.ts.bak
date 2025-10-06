@@ -1,0 +1,858 @@
+import {  Component,  Input, NgZone,  ViewChild,  OnInit,  AfterViewInit,  CUSTOM_ELEMENTS_SCHEMA,ElementRef } from '@angular/core';
+
+import { Platform } from '@ionic/angular';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
+
+import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { TrackService } from '../services/track/track.service';
+import { UtilService } from '../services/util/util.service';
+import { environment } from '../../environments/environment';
+import { User } from '../models/user';
+import { ActivatedRoute } from '@angular/router';
+import { RideService } from '../services/ride/ride.service';
+import { InitUserProvider } from '../services/inituser/inituser.service';
+import { PaypalService } from '../services/api/paypal.service';
+import { SetLocationComponent } from '../../app/components/set-location/set-location.component';
+import { RequestRideComponent } from '../../app/components/request-ride/request-ride.component';
+import { PaymentMethodsComponent } from '../../app/components/payment-methods/payment-methods.component';
+import { GoogleMap,  MapDirectionsRenderer,  MapDirectionsService,  MapInfoWindow,  MapMarker,} from '@angular/google-maps';
+import { from, map, Observable } from 'rxjs';
+import { ChangePaymentComponent } from '../components/change-payment/change-payment.component';
+import { BookingConfirmationComponent } from '../components/booking-confirmation/booking-confirmation.component';
+import { IPayPalConfig, ICreateOrderRequest } from 'ngx-paypal';
+import { HttpClient } from '@angular/common/http';
+import { InitPaymentMethodService } from 'src/app/services/initPaymentMethod/init-payment-method.service';
+import { PaymentMethod } from 'src/app/models/paymentMethod';
+import { IonSearchbar } from '@ionic/angular';
+import { PayPalScriptService } from 'ngx-paypal';
+declare const paypal: any; // 👈 Esto es importante
+
+@Component({
+  selector: 'app-tab1',
+  templateUrl: 'tab1.page.html',
+  styleUrls: ['tab1.page.scss'],
+  standalone: false,
+ 
+})
+export class Tab1Page implements OnInit, AfterViewInit {
+  @ViewChild('map', { static: false }) mapElement!: ElementRef;
+  @Input() country!: string;
+  @ViewChild(GoogleMap, { static: false }) googlemap!: GoogleMap;
+  @ViewChild(MapInfoWindow, { static: false }) info!: MapInfoWindow;
+  @ViewChild('destinationSearchbar', { static: false })
+  searchbar!: IonSearchbar;
+  @ViewChild(MapDirectionsRenderer)
+  mapDirectionsRenderer!: MapDirectionsRenderer;
+
+  // Map and UI variables
+  directionsResults$!: Observable<google.maps.DirectionsResult | undefined>;
+  routeLeg!: google.maps.DirectionsLeg;
+  startLocation!: google.maps.LatLngLiteral;
+  endLocation!: google.maps.LatLngLiteral;
+  waypoints: google.maps.LatLngLiteral[] = [];
+  endIcon!: google.maps.Icon;
+
+  position!: google.maps.LatLngLiteral;
+  zoom = 20;
+  center!: google.maps.LatLngLiteral;
+  options: google.maps.MapOptions = {
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    styles: environment.MAP_STYLE,
+    disableDoubleClickZoom: true,
+    maxZoom: this.zoom,
+    disableDefaultUI: true,
+  };
+
+  vertices!: google.maps.LatLngLiteral[];
+  markers = [];
+  infoContent = '';
+  kmlUrl: any;
+  searchItem = '';
+  autocompleteItems: string[] = [];
+  item: any;
+
+  form!: FormGroup;
+  isSubmitted = false;
+  openModal = false;
+  showPaypalContent: boolean = false;
+  //showCreditCardContent: boolean = false;
+  //showCashContent: boolean = false;
+
+  sourceLocationSearch!: string;
+  destinationLocationSearch!: string;
+  source_marker: any;
+  destination_marker: any;
+  paymentMethodImage: string = 'assets/cards/amexLable.png';
+  IsPaymentMethodDefault: boolean = false;
+  IsPayPalUserSelected: boolean = false;
+  paymentMethodsList: PaymentMethod[] = [];
+  endLocationMarker: boolean = false;
+
+  map!: google.maps.Map;
+
+  public loggedInUser!: User;
+  public lat: any;
+  public lng: any;
+  public color = ['black', 'black', 'black'];
+  public items: { 'background-color'?: string }[] = [{}, {}, {}];
+  public origin: any;
+  public destination: any;
+  public pickup!: boolean;
+  public locatedCountry!: string;
+  sourceIconUrl = 'assets/images/location2.png';
+  destinationIconUrl = 'assets/images/pin.png';
+
+  public paymentMethodSelected!: string;
+  public paymentMethodDescription!: string;
+
+  // PayPal configuration
+  public payPalConfig?: IPayPalConfig;
+  //public payPalConfigCredit?: IPayPalConfig;
+  public orderId!: string; // Stores the order ID for cancellation
+  private paypalRendered = false;
+  paypalButtonClicked: boolean = false;
+
+  constructor(
+    private track: TrackService,
+    private __zone: NgZone,
+    public rideService: RideService,
+    private userProvider: InitUserProvider,
+    private mapDirectionsService: MapDirectionsService,
+    private util: UtilService,
+    private addCard: InitPaymentMethodService,
+    private platform: Platform
+  ) {
+    console.log('inside tab1.ts');
+    this.rideService.initializeDirectionsService();
+    this.geolocationRequestPermissions();
+    
+    rideService.setTripDistance(rideService.tripDistance);
+    this.initPayPalConfig();
+    this.getCurrentLocation();
+    this.searchbar?.setFocus();
+  }
+
+  async ngOnInit() {
+    
+    
+  }
+
+  ionViewDidEnter() {   this.loadMap();  }
+
+  async loadMap() {
+    try {
+      await this.platform.ready();
+
+      // Esperar que Google Maps esté disponible
+      if (typeof google === 'undefined' || !google.maps) {
+        console.error('Google Maps no está disponible.');
+        return;
+      }
+
+      const coords = await this.getCurrentLocation();
+
+      const mapOptions: google.maps.MapOptions = {
+        center: {
+          lat: coords?.latitude ?? 18.4655,
+          lng: coords?.longitude ?? -66.1057,
+        },
+        zoom: 14,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+      };
+
+      this.map = new google.maps.Map(this.mapElement.nativeElement, mapOptions);
+
+      // Añadir marcador
+      if (coords) {
+        new google.maps.Marker({
+          position: { lat: coords.latitude, lng: coords.longitude },
+          map: this.map,
+          title: 'Mi ubicación',
+        });
+      }
+
+    } catch (error) {
+      console.error('Error cargando el mapa:', error);
+    }
+  }
+
+
+
+  ngAfterViewInit() {}
+
+  private payPalButton() {
+    const value = (this.rideService.getFare() || 0.1).toFixed(2);
+    this.payPalConfig = {
+      currency: environment.PAYPAL_CONFIGURATION.currency,
+      clientId: environment.PAYPAL_CONFIGURATION.clientId,
+      createOrderOnClient: (data) =>
+        <ICreateOrderRequest>{
+          intent: 'CAPTURE',
+          purchase_units: [
+            {
+              amount: {
+                currency_code: environment.PAYPAL_CONFIGURATION.currency,
+                value: value,
+                breakdown: {
+                  item_total: {
+                    currency_code: environment.PAYPAL_CONFIGURATION.currency,
+                    value: value,
+                  },
+                },
+              },
+              items: [
+                {
+                  name: 'Servicio de Grua UAR',
+                  quantity: '1',
+                  category: 'DIGITAL_GOODS',
+                  unit_amount: {
+                    currency_code: environment.PAYPAL_CONFIGURATION.currency,
+                    value: value,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      advanced: {
+        commit: 'true',
+      },
+      style: {
+        label: 'paypal',
+        layout: 'vertical',
+      },
+      fundingSource: undefined, // esto permite PayPal por defecto
+      onApprove: (data, actions) => {
+        console.log('Transaction approved', data, actions);
+        console.log('Transacción aprobada - OrderID:', data.orderID);
+        this.orderId = data.orderID;
+        this.rideService.PayPalcreateOrder(data.orderID);
+        this.rideService.setPayPalMethod(true);
+
+        actions.order.get().then((details: Record<string, any>) => {
+          console.log('Transaction completed: ', details);
+        });
+      },
+      onClientAuthorization: (data) => {
+        console.log('Client authorization received', data);
+        this.IsPayPalUserSelected = true;
+      },
+      onCancel: (data, actions) => {
+        console.log('Transaction cancelled from Paypal App', data, actions);
+        this.rideService.PayPalcancelOrder(this.orderId);
+        this.rideService.setPayPalMethod(false);
+      },
+      onError: (err) => {
+        console.error('Transaction error', err);
+      },
+      onClick: (data, actions) => {
+        console.log('PayPal button clicked', data, actions);
+      },
+    };
+  }
+
+  ionViewWillLeave() {
+    // 👇 Esto borra el foco antes de que el tab se oculte
+    (document.activeElement as HTMLElement)?.blur();
+  }
+
+  private initPayPalConfig(): void {
+    const value = '0.01'; // (this.rideService.getFare() || 0).toFixed(2);
+
+    this.payPalConfig = {
+      currency: environment.PAYPAL_CONFIGURATION.currency,
+      clientId: environment.PAYPAL_CONFIGURATION.clientId,
+      createOrderOnClient: (data) =>
+        <ICreateOrderRequest>{
+          intent: 'CAPTURE',
+          purchase_units: [
+            {
+              amount: {
+                currency_code: environment.PAYPAL_CONFIGURATION.currency,
+                value: value,
+                breakdown: {
+                  item_total: {
+                    currency_code: environment.PAYPAL_CONFIGURATION.currency,
+                    value: value,
+                  },
+                },
+              },
+              items: [
+                {
+                  name: 'Servicio de Grua UAR',
+                  quantity: '1',
+                  category: 'DIGITAL_GOODS',
+                  unit_amount: {
+                    currency_code: environment.PAYPAL_CONFIGURATION.currency,
+                    value: value,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      advanced: {
+        commit: 'true',
+      },
+      style: {
+        label: 'paypal',
+        layout: 'vertical',
+      },
+      fundingSource: undefined, // esto permite PayPal por defecto
+      onApprove: (data, actions) => {
+        console.log('Transaction approved', data, actions);
+        console.log('Transacción aprobada - OrderID:', data.orderID);
+        this.orderId = data.orderID;
+        this.rideService.PayPalcreateOrder(data.orderID);
+        this.rideService.setPayPalMethod(true);
+
+        actions.order.get().then((details: Record<string, any>) => {
+          console.log('Transaction completed: ', details);
+        });
+      },
+      onClientAuthorization: (data) => {
+        console.log('Client authorization received', data);
+        this.IsPayPalUserSelected = true;
+      },
+      onCancel: (data, actions) => {
+        console.log('Transaction cancelled from Paypal App', data, actions);
+        this.rideService.PayPalcancelOrder(this.orderId);
+        this.rideService.setPayPalMethod(false);
+      },
+      onError: (err) => {
+        console.error('Transaction error', err);
+      },
+      onClick: (data, actions) => {
+        console.log('PayPal button clicked', data, actions);
+      },
+    };
+  }
+
+  logCenter() {
+    // Optionally log the map center:
+    // console.log(JSON.stringify(this.googlemap.getCenter()));
+  }
+  async geolocationRequestPermissions(){
+   
+    await Geolocation.requestPermissions(); // ← Esto es obligatorio en Android
+
+  
+
+  }
+
+  async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+      if (Capacitor.getPlatform() === 'web') {
+        // Usar API web del navegador
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) return reject('Geolocation no soportado');
+
+          navigator.geolocation.getCurrentPosition(
+            (pos) =>
+              resolve({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+              }),
+            (err) => reject(err)
+          );
+        });
+      } else {
+        // Usar plugin de Capacitor
+        const position = await Geolocation.getCurrentPosition();
+        return {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+      }
+    } catch (error) {
+      console.error('Error obteniendo ubicación:', error);
+      return null;
+    }
+  }
+
+
+
+  async getCurrentLocation2(fromIcon: boolean) {
+
+    this.IsPayPalUserSelected = false;
+    this.resetPaypalButton();
+    const rideId = await this.userProvider.getRideId();
+    if (rideId) {
+      this.rideService.checkIfExistingRide(rideId);
+    }
+    this.loggedInUser = this.userProvider.getUserData();
+
+    const loader = await this.util.createLoader('Getting your location..');
+    await loader.present();
+    try {
+      await this.util.getCurrentLatLng();
+      const result = this.util.getCoordinates();
+      if (result) {
+        this.lat = result.latitude;
+        this.lng = result.longitude;
+      } else {
+        console.error('Error: result is null');
+      }
+
+      this.endLocationMarker = false;
+
+      this.rideService.center = {
+        lat: this.lat,
+        lng: this.lng,
+      };
+      this.rideService.markers = [
+        {
+          lat: this.lat,
+          lng: this.lng,
+          label: {
+            text: '.',
+            color: '#000000',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          },
+          draggable: true,
+          position: this.rideService.center,
+          title: 'test title',
+          options: { animation: google.maps.Animation.DROP },
+          icon: {
+            url: this.sourceIconUrl,
+            scaledSize: new google.maps.Size(50, 50), // scaled size
+            labelOrigin: new google.maps.Point(25, 60),
+          },
+        },
+      ];
+      this.zoom = 20;
+      this.rideService.options = {
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        styles: environment.MAP_STYLE,
+        disableDoubleClickZoom: true,
+        maxZoom: this.zoom,
+        disableDefaultUI: true,
+        fullscreenControl: false,
+        streetViewControl: false,
+        mapTypeControl: false,
+      };
+
+      if (fromIcon) {
+        await this.rideService
+          .setAddress(
+            { lat: this.lat, lng: this.lng },
+            this.rideService.locationType
+          )
+          .then((result) => {
+            this.sourceLocationSearch =
+              this.rideService.locationType === 'pickup'
+                ? this.rideService.originAddress
+                : this.rideService.destinationAddress;
+            this.rideService.locationType = 'destination';
+          });
+      }
+      this.rideService.updateUserLocation(
+        this.loggedInUser.id,
+        this.lat,
+        this.lng
+      );
+    } catch (error) {
+      console.error('Error getting current location:', error);
+    } finally {
+      loader.dismiss();
+      (document.activeElement as HTMLElement)?.blur(); // 👈 evita el warning
+    }
+  }
+
+  openLocationModal() {
+    this.openModal = true;
+    this.formData();
+  }
+
+  formData() {
+    this.form = new FormGroup({
+      lat: new FormControl(null, { validators: [Validators.required] }),
+      lng: new FormControl(null, { validators: [Validators.required] }),
+    });
+  }
+
+  async onSubmit() {
+    if (!this.form.valid) return;
+    try {
+      this.isSubmitted = true;
+      const source = {
+        lat: this.form.value.lat,
+        lng: this.form.value.lng,
+      };
+      console.log(source);
+      await this.track.updateSourceLocation(source);
+      this.isSubmitted = false;
+      this.openModal = false;
+    } catch (e) {
+      this.isSubmitted = false;
+      console.log(e);
+    }
+  }
+
+  async searchOnChange() {
+    if (this.searchItem) {
+      const predictions = await this.util.getGooglePlaceAutoCompleteList(
+        this.searchItem,
+        {},
+        environment.COUNTRY
+      );
+      this.autocompleteItems = [];
+      console.log(predictions);
+      this.__zone.run(() => {
+        if (predictions !== null) {
+          (predictions as any[] | null)?.forEach((prediction) => {
+            this.autocompleteItems.push(prediction.description);
+          });
+        }
+      });
+    }
+  }
+
+  changeStyle(j: number) {
+    for (const it of this.items) {
+      it['background-color'] = 'rgba(128, 128, 128, 0.22)'; // Ensure type safety
+    }
+    this.items[j]['background-color'] = '#53bfe9';
+  }
+
+  async getCurrentLocationFromIcon() {
+    await this.getCurrentLocation();
+
+    this.rideService.destinationAddress = '';
+    this.rideService.destination = null;
+    this.rideService.directionsResults$ = from([undefined]);
+    this.zoom = 20;
+    this.rideService.options = {
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      styles: environment.MAP_STYLE,
+      disableDoubleClickZoom: true,
+      maxZoom: this.zoom,
+      disableDefaultUI: true,
+      fullscreenControl: false,
+      streetViewControl: false,
+      mapTypeControl: false,
+    };
+
+    console.dir(this.rideService);
+  }
+
+  async onChange(event: any) {
+    const originLocation = event.request.origin.location;
+    const destinationLocation = event.request.destination.location;
+
+    const origin = { lat: originLocation.lat(), lng: originLocation.lng() };
+    const destination = {
+      lat: destinationLocation.lat(),
+      lng: destinationLocation.lng(),
+    };
+
+    if (
+      origin.lat !== this.rideService.origin.lat ||
+      origin.lng !== this.rideService.origin.lng
+    ) {
+      console.log('origin changed', origin);
+      await this.rideService.setAddress(origin, 'pickup');
+      Object.assign(this.rideService.origin, origin);
+    }
+    if (
+      destination.lat !== this.rideService.destination.lat ||
+      destination.lng !== this.rideService.destination.lng
+    ) {
+      console.log('destination changed', destination);
+      await this.rideService.setAddress(destination, 'destination');
+      Object.assign(this.rideService.destination, destination);
+    }
+    this.rideService.tripDistance = Math.round(
+      event.routes[0].legs[0].distance.value / 1000
+    );
+    this.routeLeg = event.routes[0].legs[0];
+
+    this.drawRoute();
+  }
+
+  async gotoEdit(name: string, value: any, open: string) {
+    this.rideService.locationType = name;
+    if (open === 'modal') {
+      const modal = await this.util.createModal(
+        SetLocationComponent,
+        {
+          country: this.locatedCountry
+            ? this.locatedCountry
+            : environment.COUNTRY,
+        },
+        'MyModal'
+      );
+      await modal.present();
+      //await modal.onDidDismiss();
+
+      modal.onWillDismiss().then(async (result) => {
+        // Update origin and destination from rideService
+        this.origin = this.rideService.origin;
+        this.destination = this.rideService.destination; // Fixed: correctly set destination
+
+        if (name === 'destination') {
+          this.destinationLocationSearch = this.rideService.destinationAddress;
+
+          this.endLocationMarker = true;
+          this.endLocation = {
+            lat: this.rideService.destination.lat,
+            lng: this.rideService.destination.lng,
+          };
+
+          this.endIcon = {
+            url: '../../assets/images/pin.png', // 🛠 Change to your destination marker
+            scaledSize: new google.maps.Size(50, 50),
+          };
+        } else if (name === 'pickup') {
+          this.sourceLocationSearch = this.rideService.originAddress;
+        }
+
+        this.drawRoute();
+        this.rideService.confirm = true;
+        this.Seleccion();
+      });
+    }
+    this.pickup = value;
+  }
+
+  drawRoute() {
+    const request: google.maps.DirectionsRequest = {
+      origin: {
+        lat: this.rideService.origin.lat,
+        lng: this.rideService.origin.lng,
+      },
+      destination: {
+        lat: this.rideService.destination.lat,
+        lng: this.rideService.destination.lng,
+      },
+      travelMode: google.maps.TravelMode.DRIVING,
+    };
+
+    this.rideService.directionsResults$ = this.mapDirectionsService
+      .route(request)
+      .pipe(map((response) => response.result));
+
+    this.rideService.directionsResults$.subscribe((items) => {
+      console.dir(items);
+
+      if (
+        items &&
+        items.routes &&
+        items.routes[0] &&
+        items.routes[0].legs &&
+        items.routes[0].legs[0]
+      ) {
+        const distanceText =
+          items?.routes?.[0]?.legs?.[0]?.distance?.text ?? '0 km'; // e.g., "12 km"
+        this.rideService.tripDistance = parseFloat(
+          distanceText.substring(0, distanceText.indexOf(' '))
+        );
+        console.log(this.rideService.tripDistance);
+        this.rideService.duration =
+          items.routes?.[0]?.legs?.[0]?.duration?.text ?? 'Unknown duration';
+        console.log(this.rideService.duration);
+        this.rideService.fare = this.rideService.getFare();
+        console.log(this.rideService.fare);
+      }
+    });
+  }
+
+  openInfo(marker: MapMarker, content: string) {
+    this.infoContent = content;
+    this.info.open(marker);
+  }
+
+  async Seleccion() {
+    if (this.rideService.confirm && this.rideService.destination != null) {
+      this.rideService.RequestRide = true;
+      this.rideService.SelectRide = false;
+      this.showPaypalContent = false;
+      //this.showCreditCardContent = false;
+      //this.showCashContent = false;
+      //check if the user contain default payment method.
+      // Fetch payment methods and determine default
+      from(this.addCard.getPaymentMethodData(this.loggedInUser.id)).subscribe(
+        (array) => {
+          this.paymentMethodsList = array;
+
+          // Set default selected card if available
+          const defaultCardIndex = this.paymentMethodsList.findIndex(
+            (card) => card.DefaultPaymentMethod
+          );
+          if (defaultCardIndex !== -1) {
+            this.IsPaymentMethodDefault = true;
+            this.paymentMethodImage = this.getImage(
+              this.paymentMethodsList[defaultCardIndex].paymentMethod
+            );
+            this.paymentMethodDescription = `XXXX-${this.paymentMethodsList[
+              defaultCardIndex
+            ].cardNumber.slice(-4)}`;
+          } else {
+            this.IsPaymentMethodDefault = false;
+            this.paymentMethodImage = 'assets/cards/cashLable.png';
+            this.paymentMethodDescription = '';
+          }
+        }
+      );
+    }
+  }
+
+  getImage(paymentMethod: string): string {
+    const images = {
+      visa: 'assets/cards/visaLable.png',
+      mastercard: 'assets/cards/mastercardLable.png',
+      amex: 'assets/cards/amexLable.png',
+      creditCard: 'assets/cards/creditCardLable.png',
+      paypal: 'assets/cards/paypalLable.png',
+      cash: 'assets/cards/cashLable.png',
+    };
+    return paymentMethod in images
+      ? images[paymentMethod as keyof typeof images]
+      : 'assets/cards/discoverLable.png';
+  }
+
+  async returnSelectRide() {
+    if (this.rideService.confirm) {
+      this.rideService.RequestRide = false;
+      this.showPaypalContent = false;
+      //this.showCreditCardContent = false;
+      this.rideService.SelectRide = true;
+      this.getCurrentLocationFromIcon();
+    }
+  }
+
+  async Confirmation() {
+    if (this.rideService.confirm && !this.rideService.SelectRide) {
+      this.rideService.RequestRide = false;
+      this.showPaypalContent = false;
+      //this.showCreditCardContent = false;
+      //this.showCashContent = false;
+      this.rideService.SelectRide = true;
+      const modal2 = await this.util.createModal(BookingConfirmationComponent, {
+        country: this.locatedCountry
+          ? this.locatedCountry
+          : environment.COUNTRY,
+      });
+      await modal2.present();
+      await modal2.onDidDismiss();
+    }
+  }
+
+  async PaymentOption() {
+    if (this.rideService.confirm && !this.rideService.SelectRide) {
+      const modal = await this.util.createModal(PaymentMethodsComponent, {
+        country: this.locatedCountry
+          ? this.locatedCountry
+          : environment.COUNTRY,
+      });
+
+      modal.onWillDismiss().then(async (dataReturned) => {
+        if (dataReturned != null && dataReturned.data) {
+          //this.paymentMethodSelected = dataReturned.data.card.paymentMethod;
+          //this.rideService.setPaymentMethod( dataReturned.data.card.paymentMethod  );
+          //this.paymentMethodImage = this.getImage( dataReturned.data.card.paymentMethod );
+          this.paymentMethodImage = this.getImage( dataReturned.data.value );
+
+
+          switch (dataReturned.data.value) {
+            case 'paypal': {
+              this.showPaypalContent = true;
+              // this.showCreditCardContent = false;
+              //this.showCashContent = false;
+              this.rideService.RequestRide = true;
+              this.paymentMethodDescription = dataReturned.data.value;
+
+              if ( this.paypalRendered ||                !document.getElementById('paypal-button-container') ) {
+                break;
+              } else {
+                if (
+                  (window as any)['paypal'] &&
+                  typeof (window as any)['paypal'].Buttons === 'function'
+                ) {
+                  this.payPalButton(); // Puedes ajustar el delay si lo necesitas
+                }
+              }
+
+              break;
+            }
+            case 'creditCard':
+            case 'visa':
+            case 'master':
+            case 'amex': {
+              this.showPaypalContent = false;
+              //this.showCreditCardContent = true;
+              //this.showCashContent = false;
+              this.rideService.RequestRide = true;
+              //this.paymentMethodDescription = `XXXX-${dataReturned.data.card.cardNumber.slice( -4  )}`;
+              this.paymentMethodDescription = dataReturned.data.value;
+              break;
+            }
+            default: {
+              this.showPaypalContent = false;
+              //this.showCreditCardContent = false;
+              //this.showCashContent = true;
+              this.rideService.RequestRide = true;
+              this.paymentMethodDescription = '';
+              break;
+            }
+          }
+        }
+      });
+      await modal.present();
+    }
+  }
+
+  loadPaypalButton() {
+    const container = document.getElementById('paypal-button-container');
+
+    if (!container) {
+      console.error('Contenedor PayPal no encontrado');
+      return;
+    }
+
+    // ✅ Limpiar contenedor si ya tiene contenido
+    container.innerHTML = '';
+
+    if ((window as any).paypal) {
+      (window as any).paypal.Buttons(this.payPalConfig).render(container);
+    } else {
+      console.error('PayPal SDK no cargado');
+    }
+  }
+
+  showPaypal() {
+    if (!this.paypalRendered) {
+      this.loadPaypalButton();
+      this.paypalRendered = true;
+    }
+  }
+
+  resetPaypalButton() {
+    this.paypalRendered = false;
+  }
+
+  cancelCreditCardOrder() {}
+
+  cancelPayPalOrder() {
+    this.orderId = '';
+    this.rideService.setPayPalMethod(false);
+    this.util.presentAlert(
+      'Cancelación',
+      'La orden fue cancelada. No se realizó ningún cobro.',
+      'OK'
+    );
+
+    //¿Y si quieres verificar si fue capturada?
+    // Puedes usar el SDK de PayPal o una petición HTTP con tu client ID y secret para consultar el estado de la orden:
+    // GET https://api-m.sandbox.paypal.com/v2/checkout/orders/{order_id}
+    // Authorization: Bearer <access_token>
+    // Si el estado es "APPROVED" y no "COMPLETED", puedes ignorarla sin preocuparte.
+    //     Conclusión
+    // ✅ Si el usuario cancela después de aprobar, simplemente no captures la orden.
+    // ✅ No necesitas llamar a una API para "cancelar".
+    // ✅ Puedes limpiar la orden en tu app (eliminarla de Firestore o marcarla como cancelled).
+    // ⚠️ Las órdenes no capturadas no se cobran.
+  }
+}

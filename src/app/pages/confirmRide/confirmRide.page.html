@@ -1,0 +1,127 @@
+<ion-content [fullscreen]="true">
+  <div class="map-wrap">
+  <google-map 
+      height="100%"
+      width="100%"
+      [center]="rideService.center"
+      [options]="rideService.options">
+             <map-marker *ngFor="let marker of rideService.markers"
+                [position]="marker.position"
+                [title]="marker.title"
+                [options]="marker.options"
+                [icon]="marker.icon"
+              ></map-marker> 
+              <!-- ✅ End Marker (Custom Icon) -->
+              <map-marker  [position]="endLocation" [icon]="endIcon"> </map-marker>
+              <!--<map-info-window>{{ infoContent }}</map-info-window> -->
+          
+             <!-- Halo blanco -->
+             <ng-container *ngIf="(rideService.directionsResults$ | async) as d">
+              <!-- Halo blanco (exterior, ancho) -->
+              <map-directions-renderer
+                [directions]="d"
+                [options]="{
+                  suppressMarkers: true,
+                  preserveViewport: true,
+                  polylineOptions: { strokeColor: '#FFFFFF', strokeOpacity: 0.85, strokeWeight: 10 }
+                }">
+              </map-directions-renderer>
+            
+              <!-- Trazo negro (interior, fino) -->
+              <map-directions-renderer
+                [directions]="d"
+                [options]="directionsOpts">
+              </map-directions-renderer>
+            </ng-container>
+    </google-map>  
+   </div>
+   
+   
+   <ion-fab vertical="top" horizontal="start" slot="fixed" class="fab-icon" >
+    <ion-fab-button (click)="CancelBooking()" color="light" >
+      <ion-icon name="arrow-back-outline" style="font-size: 35px;" color="favorite"></ion-icon>
+    </ion-fab-button>
+   </ion-fab>
+   <ion-fab vertical="bottom" horizontal="end" slot="fixed" class="fab-icon"  >
+     <!-- Chips flotantes (opcional) -->
+      <div class="floating-chips-left">
+        <ion-chip class="eta-chip" outline="true" style="border: 0px !important;">
+          <div class="eta-copy">
+            <span class="eta-small"> <ion-icon class="eta-big" name="speedometer-outline" slot="start"> </ion-icon>Distancia:</span>
+            <!-- Si ya tienes el número y la unidad por separado, usa esto: -->
+            <span class="eta-big"> <strong>{{rideService.tripDistance}}</strong> <span class="eta-unit"></span>  </span>
+          </div>
+        </ion-chip>
+      </div>  
+   </ion-fab>
+   
+
+
+
+   <ion-fab vertical="bottom" horizontal="start" slot="fixed" class="fab-icon"  >
+    <div class="floating-chips-right">
+      <ion-chip class="eta-chip" outline="true" style="border: 0px !important;">
+        
+        <div class="eta-copy">
+          <span class="eta-small"> <ion-icon name="time-outline" slot="start"></ion-icon>  Duración:</span>
+          <!-- Si ya tienes el número y la unidad por separado, usa esto: -->
+          <span class="eta-big"> <strong>{{ rideService.duration }}</strong> <span class="eta-unit"></span>  </span>
+        </div>
+      </ion-chip>
+    </div> 
+   </ion-fab> 
+   
+   <ion-fab vertical="bottom" horizontal="center" slot="fixed" class="fab-icon"  >
+    <ion-fab-button  color="light" class="fare-fab-button ">
+      <img
+        src="../../assets/images/PriceLabel.png"
+        srcset="../../assets/images/PriceLabel@2x.png 2x, ../../assets/images/PriceLabel@3x.png 3x"
+        alt=""  />
+      <div class="fare-text">
+         {{ rideService.totalFee| currency:'USD':'symbol':'1.2-2' }}
+      </div>
+    </ion-fab-button>
+   </ion-fab>
+  
+  </ion-content>
+  
+  <!-- Panel inferior -->
+<ion-footer class="sheet-footer">
+  <div class="sheet">
+    <h3 class="sheet-title">Desglose de Pago</h3>
+
+    <div class="breakdown">
+      <div class="row">
+        <span>Servicio Base:</span>
+        <strong>{{ rideService.base | currency: 'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div class="row">
+        <span>KM Adicionales (1km x $3.50):</span>
+        <strong>{{ rideService.fare | currency: 'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div class="row">
+        <span>Subtotal:</span>
+        <strong>{{ rideService.subtotal | currency: 'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div class="row">
+        <span>IVA (19%):</span>
+        <strong>{{ rideService.iva | currency: 'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div class="row total">
+        <span>Total:</span>
+        <strong>{{ rideService.totalFee | currency: 'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+    </div>
+
+    <div class="actions">
+      <ion-button expand="block" fill="outline" class="btn-outline" (click)="GoCreditCard()">
+        Credit card
+      </ion-button>
+      <ion-button expand="block" fill="solid" class="btn-solid" (click)="BookingCash()">
+        Cash
+      </ion-button>
+    </div>
+  </div>
+</ion-footer>
+ 
+  

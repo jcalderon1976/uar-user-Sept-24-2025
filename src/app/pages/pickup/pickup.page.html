@@ -1,0 +1,115 @@
+<ion-content fullscreen class="page">
+  <!-- MAPA -->
+  <div class="map-wrap">
+    <google-map
+      class="map"
+      [height]="'100%'"
+      [width]="'100%'"
+      [center]="center"
+      [options]="options">
+
+      <!-- Ruta -->
+      <map-directions-renderer
+        *ngIf="(directionsResults$ | async) as directionsResults"
+        [directions]="directionsResults"
+        [options]="{ suppressMarkers: true, preserveViewport: true }">
+      </map-directions-renderer>
+    </google-map>
+  </div>
+
+
+ 
+<ion-fab vertical="bottom" horizontal="end" slot="fixed" class="fab-icon"  >
+  <!-- Chips flotantes (opcional) -->
+    <div >
+      <ion-chip class="eta-chip" outline="true" style="border: 0px !important;">
+        <div class="eta-copy">
+          <span class="eta-small"> <ion-icon class="eta-big" name="speedometer-outline" slot="start"> </ion-icon>Distancia:</span>
+          <!-- Si ya tienes el número y la unidad por separado, usa esto: -->
+          <span class="eta-big"> <strong>{{ rideService.tripDistance}}</strong> <span class="eta-unit"></span>  </span>
+        </div>
+      </ion-chip>
+    </div>  
+</ion-fab>
+
+<ion-fab vertical="bottom" horizontal="start" slot="fixed" class="fab-icon"  >
+  <div >
+    <ion-chip class="eta-chip" outline="true" style="border: 0px !important;">
+      
+      <div class="eta-copy">
+        <span class="eta-small"> <ion-icon name="time-outline" slot="start"></ion-icon>  Llegada:</span>
+        <!-- Si ya tienes el número y la unidad por separado, usa esto: -->
+        <span class="eta-big"> <strong>{{ rideService.waitingTime }}</strong> <span class="eta-unit"></span>  </span>
+      </div>
+    </ion-chip>
+  </div> 
+ </ion-fab> 
+ 
+</ion-content>
+
+<!-- Panel inferior -->
+<ion-footer class="sheet-footer">
+
+  <!-- BOTTOM SHEET -->
+  <ion-card class="sheet">
+    <ion-card-content>
+      <!-- Driver Row -->
+      <div class="driver-row">
+        <ion-avatar class="driver-avatar">
+          <img [src]="rideService.driverInfo.profile_img || 'assets/images/userDefault.png'"
+               alt="Foto del conductor" />
+        </ion-avatar>
+
+        <div class="driver-main">
+          <div class="driver-name">
+            {{ rideService.driverInfo.name || 'Tow Service – Driver' }}
+          </div>
+          <div class="driver-rating">
+            <ion-icon name="star" class="star"></ion-icon>
+          </div>
+        </div>
+
+        <div class="driver-cta">
+          <ion-button class="bubble-btn" fill="clear" (click)="callDriver()">
+            <ion-icon slot="icon-only" name="call-outline"></ion-icon>
+          </ion-button>
+        
+          <ion-button class="bubble-btn" fill="clear" (click)="messageDriver()">
+            <ion-icon slot="icon-only" name="chatbubbles-outline"></ion-icon>
+          </ion-button>
+        </div>
+      </div>
+
+      <div class="driver-meta">
+        <span>{{rideService.driverInfo.car_brand}} {{rideService.driverInfo.car_model}}</span>
+        <span class="dot">•</span>
+        <span>{{rideService.driverInfo.car_color}}</span>
+        <span class="dot">•</span>
+        <span>{{ rideService.driverInfo.car_license_plate }}</span>
+      </div>
+
+      <!-- Direcciones -->
+      <div class="addr">
+        <ion-img src="{{ locationPointOriginAddress }}" class="locationImage"></ion-img>
+        <div class="addr-text">
+          <label>Pickup:</label>
+          <div class="ellipsis-2">{{ rideService.originAddress }}</div>
+        </div>
+      </div>
+
+      <div class="addr">
+        <ion-img src="{{locationPointDestinationAddress}}"  class="locationImage"></ion-img>
+        <div class="addr-text">
+          <label >Drop-Off:</label>
+          <div class="ellipsis-2">{{ rideService.destinationAddress }}</div>
+        </div>
+      </div>
+
+      <!-- Botón Cancel -->
+      <ion-button expand="block" class="cancel-button" (click)="cancelRide()" [disabled]="!rideService.rideInfo.ride_accepted">
+        Cancelacion
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+</ion-footer>
+

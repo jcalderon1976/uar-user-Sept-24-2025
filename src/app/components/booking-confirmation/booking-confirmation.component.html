@@ -1,0 +1,22 @@
+<!-- Overlay de loading a pantalla completa -->
+<div
+  class="loader-overlay"
+  *ngIf="visible"
+  role="status"
+  aria-busy="true"
+  aria-live="polite"
+>
+  <!-- El GIF ocupa toda la pantalla -->
+  <img
+    class="loader-bg"
+    src="../../../assets/gifs/loading.gif"
+    alt=""
+    aria-hidden="true"
+  />
+
+  <!-- Mensaje sobre el GIF, pegado a la parte inferior -->
+  <div class="loader-bottom">
+    <p class="loader-title">Buscando conductor…</p>
+    <p class="loader-sub">Gracias por esperar</p>
+  </div>
+</div>

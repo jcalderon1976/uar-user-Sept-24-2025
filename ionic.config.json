@@ -1,0 +1,8 @@
+{
+  "name": "uar-user",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular",
+  "id": "f6332e86"
+}

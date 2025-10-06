@@ -1,0 +1,27 @@
+<ion-fab vertical="top" horizontal="start" slot="fixed" class="fab-icon" >
+  <ion-fab-button (click)="goBack()" color="light" >
+    <ion-icon name="arrow-back-outline" style="font-size: 35px;" color="favorite"></ion-icon>
+  </ion-fab-button>
+ </ion-fab>
+
+<ion-content class="ion-padding">
+  <div class="first-div">
+    <ion-row class="ion-justify-content-center">
+        <h3 class="h1-class">Metodo de Pago </h3>
+     </ion-row>
+     <ion-row class="ion-justify-content-center">
+       <h5 class="h2-class">Precio Total: ${{totalFare }} </h5>
+   </ion-row>
+    <ion-row class="ion-justify-content-center">
+         <p class="h2-class ion-no-margin ion-text-uppercase">Tiempo del Viaje Aproximado es: {{tripTime}}</p>
+    </ion-row>
+  </div>
+
+  <div *ngFor="let method of paymentMethods" class="card" [class.selected]="selectedMethod === method.id" (click)="selectMethod(method.id)">
+    <div class="card-content">
+      <img [src]="method.icon" alt="icon" class="icon" />
+      <div class="details"></div>
+          <ion-radio slot="end" [checked]="selectedMethod === method.id"></ion-radio>
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,33 @@
+﻿<ion-content [fullscreen]="true">
+  <google-map 
+    height="100%"
+    width="100%"
+    [center]="this.rideService.center"
+    [options]="this.rideService.options"
+    >
+           <map-marker *ngFor="let marker of this.rideService.markers"
+              [position]="marker.position"
+              [title]="marker.title"
+              [options]="marker.options"
+              [icon]="marker.icon"
+            ></map-marker> 
+    </google-map>  
+ <ion-fab vertical="bottom" horizontal="end" slot="fixed" class="fab-icon" >
+  <ion-fab-button (click)="Reset()" color="light" >
+    <ion-icon name="locate-outline" style="font-size: 35px;" color="favorite"></ion-icon>
+  </ion-fab-button>
+ </ion-fab>
+</ion-content>
+
+<ion-footer class="myFooter" >
+  <ion-grid>
+    
+    <ion-row >
+     <ion-card class="SelectRideCard">
+        <ion-card-content class="card_content ">
+          <ion-searchbar   #destinationSearchbar  placeholder="Seleccione su destino."  (click)="searchModal('destination','modal')"></ion-searchbar>
+        </ion-card-content>
+      </ion-card>
+    </ion-row>
+  </ion-grid>
+</ion-footer>
