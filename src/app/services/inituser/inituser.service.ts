@@ -97,7 +97,8 @@ export class InitUserProvider {
     if(_rideId){
       this.loggedInUser.rideId = _rideId;
      }
-    await this.storage.set({ key: 'id', value:user.id });
+     if(user?.id){    await this.storage.set({ key: 'id', value:  user.id});}
+     else{           await this.storage.set({ key: 'id', value:  userId? userId : ''}); }
     console.dir('SetLoggedinUser', this.loggedInUser);
   }
 
