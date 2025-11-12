@@ -307,13 +307,16 @@ export const environment = {
     SessionEndpoint : 'https://checkout-test.placetopay.com/api/session',
     currency: 'USD',
     locale : 'es_PR',
-    returnUrl: 'http://localhost:8100/tabs/tab1/pickup',
-    cancelUrl: 'http://localhost:8100/tabs/tab1/confirmRide',
-    notificationUrl: 'http://localhost:8100/tabs/tab1/pickup',
+    // returnUrl y cancelUrl se configuran dinámicamente en el servicio según la plataforma
+    // Nativo: com.orchids.uar.user://payment/success | com.orchids.uar.user://payment/cancel
+    // Web: http://localhost:8100/tabs/tab1/pickup?paymentStatus=success | http://localhost:8100/tabs/tab1/confirmRide?paymentStatus=cancelled
+    returnUrl: 'http://localhost:8100/tabs/tab1/pickup?paymentStatus=success', // Solo para referencia
+    cancelUrl: 'http://localhost:8100/tabs/tab1/confirmRide?paymentStatus=cancelled', // Solo para referencia
+    notificationUrl: 'https://uar-platform.web.app/payment/notification',
     ipAddress: '127.0.0.1',
     description: 'UAR Invoice Payment',
     companyName: 'UAR',
-    skipResult: true
+    skipResult: true // Se ajusta dinámicamente: false en nativo, true en web
   }
 }
 

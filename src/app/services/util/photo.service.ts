@@ -15,32 +15,66 @@ export class PhotoService {
     storage = getStorage();
   
     async tomarFotoYSubir(photoName: string): Promise<any> {
-
-        const image = await Camera.getPhoto({
-          quality: 90,
-          allowEditing: false,
-          resultType: CameraResultType.Base64,
-          source: CameraSource.Camera,
-        });
-      
-        const base64 = image.base64String!;
-        //TODO : Cambiar el nombre de la imagen a algo más único Client ID 
-        const fileName = `photos/${photoName}.jpeg`; //`photos/${Date.now()}.jpeg`;
-        const imageRef = ref(this.storage, fileName);
-      
-        const blob = this.base64ToBlob(base64, 'image/jpeg');
-      
+        console.log('📸 Iniciando captura de foto...');
+        
         try {
+          // Verificar permisos primero
+          const permissions = await Camera.checkPermissions();
+          console.log('📋 Permisos de cámara:', permissions);
+          
+          if (permissions.camera !== 'granted') {
+            console.log('🔐 Solicitando permisos de cámara...');
+            const requestResult = await Camera.requestPermissions({ permissions: ['camera', 'photos'] });
+            console.log('✅ Resultado de solicitud de permisos:', requestResult);
+            
+            if (requestResult.camera !== 'granted') {
+              throw new Error('Permiso de cámara denegado');
+            }
+          }
+
+          console.log('📷 Abriendo cámara...');
+          const image = await Camera.getPhoto({
+            quality: 90,
+            allowEditing: false,
+            resultType: CameraResultType.Base64,
+            source: CameraSource.Camera,
+            saveToGallery: false,
+            correctOrientation: true
+          });
+        
+          console.log('✅ Foto capturada exitosamente');
+          
+          if (!image.base64String) {
+            throw new Error('No se pudo obtener la imagen en formato base64');
+          }
+
+          const base64 = image.base64String;
+          const fileName = `photos/${photoName}.jpeg`;
+          const imageRef = ref(this.storage, fileName);
+        
+          console.log('🔄 Convirtiendo imagen a blob...');
+          const blob = this.base64ToBlob(base64, 'image/jpeg');
+          
+          console.log('☁️ Subiendo imagen a Firebase Storage...');
           await uploadBytes(imageRef, blob);
-          console.log('Imagen subida exitosamente!');
+          console.log('✅ Imagen subida exitosamente!');
+          
           const url = await getDownloadURL(imageRef);
-          console.log('Imagen subida. URL:', url);
+          console.log('🔗 URL de imagen obtenida:', url);
+          
           await this.addDoc(collection(this.firestore, 'photos'), { url, created: new Date() });
+          console.log('💾 Registro guardado en Firestore');
 
-          return url; // Retorna la URL de la imagen subida
+          return url;
 
-        } catch (err) {
-          console.error('Error al subir la imagen:', err);
+        } catch (err: any) {
+          console.error('❌ Error en tomarFotoYSubir:', err);
+          console.error('📝 Detalles del error:', {
+            message: err.message,
+            code: err.code,
+            name: err.name
+          });
+          throw err; // Re-lanzar el error para que el componente lo maneje
         }
       }
 

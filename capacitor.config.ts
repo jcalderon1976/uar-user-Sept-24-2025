@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.uar.app',
+  appId: 'com.orchids.uar.user',
   appName: 'uar-user',
   webDir: 'www',
   server: {
@@ -12,7 +12,10 @@ const config: CapacitorConfig = {
       '*.google.com',
       'firestore.googleapis.com',
       'identitytoolkit.googleapis.com',
-      'securetoken.googleapis.com'
+      'securetoken.googleapis.com',
+      '*.placetopay.com',
+      'checkout-test.placetopay.com',
+      'checkout.placetopay.com'
     ]
   },
   ios: {

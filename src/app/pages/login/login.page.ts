@@ -5,6 +5,8 @@ import { APIService } from 'src/app/services/api/api.service';
 import { Router } from '@angular/router';
 import { Subscription ,Subject } from 'rxjs';
 import { InitUserProvider } from '../../services/inituser/inituser.service';
+import { BiometricAuthService } from '../../services/biometric/biometric-auth.service';
+import { AlertController } from '@ionic/angular';
 
 @Component({
   selector: 'app-login',
@@ -22,12 +24,19 @@ export class LoginPage implements OnInit {
   public spinner = false;
   public disabled = false;
   private destroy$ = new Subject<void>();
+  
+  // Biometric authentication
+  public biometricAvailable = false;
+  public biometricType = 'none';
+  public showBiometricButton = false;
 
   constructor(private authService: AuthService, 
               private utilService: UtilService,
               private api : APIService,
               private router: Router,
-              private userProvider: InitUserProvider,) {}
+              private userProvider: InitUserProvider,
+              private biometricAuth: BiometricAuthService,
+              private alertController: AlertController) {}
 
   ngOnDestroy(): void {
 
@@ -40,7 +49,33 @@ export class LoginPage implements OnInit {
     }
   }
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Verificar si la autenticación biométrica está disponible
+    await this.checkBiometricAvailability();
+  }
+
+  /**
+   * Verifica si la autenticación biométrica está disponible y hay credenciales guardadas
+   */
+  async checkBiometricAvailability() {
+    try {
+      this.biometricAvailable = await this.biometricAuth.isBiometricAvailable();
+      
+      if (this.biometricAvailable) {
+        this.biometricType = await this.biometricAuth.getBiometryType();
+        const hasCredentials = await this.biometricAuth.hasStoredCredentials();
+        const isEnabled = await this.biometricAuth.isBiometricEnabled();
+        
+        // Mostrar botón solo si hay credenciales guardadas y está habilitado
+        this.showBiometricButton = hasCredentials && isEnabled;
+        
+        console.log('Biometric available:', this.biometricAvailable);
+        console.log('Biometric type:', this.biometricType);
+        console.log('Show biometric button:', this.showBiometricButton);
+      }
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+    }
   }
 
   async login() {
@@ -91,6 +126,10 @@ export class LoginPage implements OnInit {
                 
                 this.clearSpinner();
                 console.log('🔹 Navigating to /tabs...');
+                
+                // Guardar credenciales para autenticación biométrica (si está disponible)
+                this.saveBiometricCredentials(this.user.email, this.user.password);
+                
                 this.router.navigate(['/tabs']).then(success => {
                   console.log('✅ Navigation result:', success);
                 });
@@ -246,6 +285,179 @@ export class LoginPage implements OnInit {
   clearSpinner() {
     this.spinner = false;
     this.disabled = false;
+  }
+
+  /**
+   * Guarda las credenciales para autenticación biométrica
+   */
+  async saveBiometricCredentials(email: string, password: string) {
+    try {
+      if (!this.biometricAvailable) {
+        console.log('Biometric not available, skipping credential save');
+        return;
+      }
+
+      // Preguntar al usuario si quiere habilitar Face ID/Touch ID
+      const biometricName = this.biometricType === 'faceId' ? 'Face ID' : 
+                           this.biometricType === 'touchId' ? 'Touch ID' : 'autenticación biométrica';
+      
+      const biometricIcon = this.biometricType === 'faceId' ? '👤' : 
+                           this.biometricType === 'touchId' ? '👆' : '🔒';
+      
+      const shouldEnable = await this.presentBiometricEnableAlert(biometricName, biometricIcon);
+
+      if (shouldEnable) {
+        await this.biometricAuth.saveCredentials(email, password);
+        await this.biometricAuth.setBiometricEnabled(true);
+        console.log('Credenciales biométricas guardadas');
+        
+        // Actualizar la visibilidad del botón
+        this.showBiometricButton = true;
+        
+        // Mostrar mensaje de éxito
+        await this.utilService.presentAlert(
+          '✅ ¡Listo!',
+          `${biometricName} ha sido configurado exitosamente. La próxima vez podrás iniciar sesión más rápido.`,
+          'Entendido'
+        );
+      }
+    } catch (error) {
+      console.error('Error saving biometric credentials:', error);
+    }
+  }
+
+  /**
+   * Muestra un alert personalizado para habilitar biometría
+   */
+  async presentBiometricEnableAlert(biometricName: string, icon: string): Promise<boolean> {
+    return new Promise(async (resolve) => {
+      (document.activeElement as HTMLElement)?.blur();
+      
+      const alert = await this.alertController.create({
+        header: `${icon} ${biometricName}`,
+        message: `<div style="text-align: center; padding: 10px;">
+                    <p style="font-size: 16px; margin-bottom: 15px;">
+                      ¿Deseas usar <strong>${biometricName}</strong> para iniciar sesión más rápido y de forma segura?
+                    </p>
+                    <p style="font-size: 14px; color: #666;">
+                      Tus credenciales se guardarán de forma encriptada en tu dispositivo.
+                    </p>
+                  </div>`,
+        backdropDismiss: false,
+        buttons: [
+          {
+            text: 'Ahora no',
+            role: 'cancel',
+            cssClass: 'alert-button-cancel',
+            handler: () => {
+              resolve(false);
+            }
+          },
+          {
+            text: `Sí, usar ${biometricName}`,
+            role: 'confirm',
+            cssClass: 'alert-button-ok',
+            handler: () => {
+              resolve(true);
+            }
+          }
+        ],
+        cssClass: 'custom-alert-card biometric-alert'
+      });
+      
+      await alert.present();
+    });
+  }
+
+  /**
+   * Inicia sesión usando autenticación biométrica
+   */
+  async loginWithBiometric() {
+    try {
+      this.setSpinner();
+      console.log('🔵 BIOMETRIC LOGIN - Starting biometric authentication');
+
+      // Obtener credenciales usando autenticación biométrica
+      const credentials = await this.biometricAuth.loginWithBiometric();
+
+      if (!credentials) {
+        console.log('❌ Biometric authentication failed or cancelled');
+        this.clearSpinner();
+        return;
+      }
+
+      console.log('✅ Biometric authentication successful, logging in...');
+      
+      // Usar las credenciales obtenidas para hacer login
+      this.api.logIn(credentials.email, credentials.password)
+        .subscribe({
+          next: async (res) => {
+            console.log('🟢 LOGIN SUCCESS with biometric');
+            
+            await this.userProvider.setToken(res['id']);
+            
+            this.userSubscription = this.api.getUser().subscribe({
+              next: (responseUser) => {
+                if (!responseUser) {
+                  this.utilService.presentAlert('Error', 'User data not found. Please try again.', 'OK');
+                  this.clearSpinner();
+                  return;
+                }
+                
+                this.userProvider.setLoggedInUser(responseUser);
+                this.clearSpinner();
+                this.router.navigate(['/tabs']);
+              },
+              error: (err) => {
+                console.error('❌ Error getting user from Firestore:', err);
+                this.utilService.presentAlert('Error', 'Failed to load user data: ' + err.message, 'OK');
+                this.clearSpinner();
+              }
+            });
+          },
+          error: async (err) => {
+            console.error('❌ LOGIN FAILED with biometric credentials:', err);
+            
+            // Si las credenciales guardadas ya no son válidas, eliminarlas
+            await this.biometricAuth.deleteCredentials();
+            this.showBiometricButton = false;
+            
+            this.utilService.presentAlert(
+              'Error', 
+              'Las credenciales guardadas ya no son válidas. Por favor, inicia sesión manualmente.', 
+              'OK'
+            );
+            this.clearSpinner();
+          }
+        });
+    } catch (error: any) {
+      console.error('❌ EXCEPTION in biometric login:', error);
+      this.utilService.presentAlert('Error', 'Error en autenticación biométrica: ' + error.message, 'OK');
+      this.clearSpinner();
+    }
+  }
+
+  /**
+   * Deshabilita la autenticación biométrica
+   */
+  async disableBiometric() {
+    try {
+      const confirm = await this.utilService.presentConfirm(
+        'Deshabilitar Autenticación Biométrica',
+        '¿Estás seguro de que deseas deshabilitar la autenticación biométrica?',
+        'Sí, deshabilitar',
+        'Cancelar'
+      );
+
+      if (confirm) {
+        await this.biometricAuth.deleteCredentials();
+        this.showBiometricButton = false;
+        this.utilService.presentAlert('Éxito', 'Autenticación biométrica deshabilitada', 'OK');
+      }
+    } catch (error) {
+      console.error('Error disabling biometric:', error);
+      this.utilService.presentAlert('Error', 'Error al deshabilitar autenticación biométrica', 'OK');
+    }
   }
   
 

@@ -3,7 +3,7 @@
   
   <div class="googleMap">
     <google-map  height="100%" width="100%" [center]="center" [options]="options" >
-            @if (directionsResults$ | async; as directionsResults) { <map-directions-renderer [directions]="directionsResults"   />  }
+            @if (directionsResults$ | async; as directionsResults) { <map-directions-renderer [directions]="directionsResults" [options]="{ polylineOptions: { strokeColor: '#000000', strokeOpacity: 1, strokeWeight: 6 }, suppressMarkers: false, preserveViewport: true }"  />  }
     </google-map>   
   </div>
   <ion-card>

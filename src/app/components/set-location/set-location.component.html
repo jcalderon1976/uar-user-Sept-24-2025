@@ -1,4 +1,6 @@
+
 <ion-content>
+  <br /><br /><br />
   <ion-searchbar #searchbar  class="background-transparent" inputmode="search" 
     showCancelButton="never" (ionInput)="searchOnChange($event)" (ionCancel)="reset()" selected="true" >
   </ion-searchbar>
@@ -15,12 +17,12 @@
   <ion-grid>
     <ion-row class="ion-justify-content-center">
       <ion-text color="favorite">
-        Search a location in input box
+        Seleccione la ubicacion de su destino
       </ion-text>
     </ion-row>
   </ion-grid>
 
 
-  <ion-button expand="full" fill="clear" color="favorite" (click)="dismiss()">Close</ion-button>
+  <ion-button expand="full" fill="clear" color="favorite" (click)="dismiss()">Cancelar</ion-button>
 
 </ion-content>

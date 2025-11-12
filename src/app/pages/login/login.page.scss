@@ -14,3 +14,19 @@ ion-content {
   
     
   }
+
+// Estilos para el botón de autenticación biométrica
+.biometric-button {
+  margin: 10px 16px;
+  --border-color: #5305FC;
+  --color: #5305FC;
+  font-weight: 600;
+  
+  ion-icon {
+    font-size: 24px;
+  }
+  
+  &:hover {
+    --background: rgba(83, 5, 252, 0.1);
+  }
+}

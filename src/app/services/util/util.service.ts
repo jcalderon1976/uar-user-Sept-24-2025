@@ -77,6 +77,35 @@ export class UtilService {
       await alert.present();
     }
 
+    /**
+     * Muestra una alerta de confirmación y retorna true si el usuario confirma
+     */
+    async presentConfirm(header: string, message: string, okButtonText: string = 'OK', cancelButtonText: string = 'Cancelar'): Promise<boolean> {
+      (document.activeElement as HTMLElement)?.blur();
+      const alert = await this.alertController.create({
+        header,
+        message,
+        backdropDismiss: false,
+        buttons: [
+          {
+            text: cancelButtonText,
+            role: 'cancel',
+            cssClass: 'alert-button-cancel'
+          },
+          {
+            text: okButtonText,
+            role: 'confirm',
+            cssClass: 'alert-button-ok'
+          }
+        ],
+        cssClass: 'custom-alert-card'
+      });
+    
+      await alert.present();
+      const { role } = await alert.onDidDismiss();
+      return role === 'confirm';
+    }
+
     
 
   async showToast(message: string) {

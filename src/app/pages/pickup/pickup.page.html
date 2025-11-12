@@ -12,7 +12,7 @@
       <map-directions-renderer
         *ngIf="(directionsResults$ | async) as directionsResults"
         [directions]="directionsResults"
-        [options]="{ suppressMarkers: true, preserveViewport: true }">
+        [options]="{ suppressMarkers: true, preserveViewport: true, polylineOptions: { strokeColor: '#000000', strokeOpacity: 1, strokeWeight: 6 } }">
       </map-directions-renderer>
     </google-map>
   </div>
@@ -48,16 +48,32 @@
 </ion-content>
 
 <!-- Panel inferior -->
-<ion-footer class="sheet-footer">
+<ion-footer class="sheet-footer" [class.collapsed]="!isDetailsExpanded">
+  <ion-toolbar class="sheet-toggle" color="light">
+    <ion-button
+      fill="clear"
+      expand="block"
+      size="small"
+      class="toggle-button"
+      (click)="toggleDetails()"
+      [attr.aria-expanded]="isDetailsExpanded">
+      <span>Detalles del viaje</span>
+      <ion-icon
+        slot="end"
+        [name]="isDetailsExpanded ? 'chevron-down-outline' : 'chevron-up-outline'">
+      </ion-icon>
+    </ion-button>
+  </ion-toolbar>
 
   <!-- BOTTOM SHEET -->
-  <ion-card class="sheet">
+  <ion-card class="sheet" *ngIf="isDetailsExpanded">
     <ion-card-content>
       <!-- Driver Row -->
       <div class="driver-row">
         <ion-avatar class="driver-avatar">
-          <img [src]="rideService.driverInfo.profile_img || 'assets/images/userDefault.png'"
-               alt="Foto del conductor" />
+          <img
+            [src]="rideService.driverInfo.profile_img || 'assets/images/userDefault.png'"
+            alt="Foto del conductor" />
         </ion-avatar>
 
         <div class="driver-main">
@@ -68,29 +84,19 @@
             <ion-icon name="star" class="star"></ion-icon>
           </div>
         </div>
-
-        <div class="driver-cta">
-          <ion-button class="bubble-btn" fill="clear" (click)="callDriver()">
-            <ion-icon slot="icon-only" name="call-outline"></ion-icon>
-          </ion-button>
-        
-          <ion-button class="bubble-btn" fill="clear" (click)="messageDriver()">
-            <ion-icon slot="icon-only" name="chatbubbles-outline"></ion-icon>
-          </ion-button>
-        </div>
       </div>
 
       <div class="driver-meta">
-        <span>{{rideService.driverInfo.car_brand}} {{rideService.driverInfo.car_model}}</span>
+        <span>{{ rideService.driverInfo.car_brand }} {{ rideService.driverInfo.car_model }}</span>
         <span class="dot">•</span>
-        <span>{{rideService.driverInfo.car_color}}</span>
+        <span>{{ rideService.driverInfo.car_color }}</span>
         <span class="dot">•</span>
         <span>{{ rideService.driverInfo.car_license_plate }}</span>
       </div>
 
       <!-- Direcciones -->
       <div class="addr">
-        <ion-img src="{{ locationPointOriginAddress }}" class="locationImage"></ion-img>
+        <ion-img [src]="locationPointOriginAddress" class="locationImage"></ion-img>
         <div class="addr-text">
           <label>Pickup:</label>
           <div class="ellipsis-2">{{ rideService.originAddress }}</div>
@@ -98,15 +104,19 @@
       </div>
 
       <div class="addr">
-        <ion-img src="{{locationPointDestinationAddress}}"  class="locationImage"></ion-img>
+        <ion-img [src]="locationPointDestinationAddress" class="locationImage"></ion-img>
         <div class="addr-text">
-          <label >Drop-Off:</label>
+          <label>Drop-Off:</label>
           <div class="ellipsis-2">{{ rideService.destinationAddress }}</div>
         </div>
       </div>
 
       <!-- Botón Cancel -->
-      <ion-button expand="block" class="cancel-button" (click)="cancelRide()" [disabled]="!rideService.rideInfo.ride_accepted">
+      <ion-button
+        expand="block"
+        class="cancel-button"
+        (click)="cancelRide()"
+        [disabled]="!rideService.rideInfo.ride_accepted">
         Cancelacion
       </ion-button>
     </ion-card-content>

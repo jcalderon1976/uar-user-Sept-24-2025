@@ -1,8 +1,13 @@
 .price{
-    font-size: 16px;
+    font-size: clamp(1rem, 2vw, 1.2rem);
     font-weight: bold;
     color: #000000;
-    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: right;
+    margin-top: 0;
+    width: 100%;
 }
 
 .location-text{
@@ -16,4 +21,22 @@
     font-weight: bold;
     color: #515151;
     margin-top: 10px;
+}
+
+.price-col{
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+@media (max-width: 767px){
+    .price-col{
+        justify-content: flex-start;
+        margin-top: 8px;
+    }
+
+    .price{
+        justify-content: flex-start;
+        text-align: left;
+    }
 }

@@ -114,13 +114,22 @@ export class SettingAccountComponent implements OnInit {
   }
 
   async SaveChange() {
-    this.updateUser(
+    await this.updateUser(
       this.loggedInUser.id,
       this.loggedInUser.name,
       this.loggedInUser.email,
       this.loggedInUser.phone,
       this.loggedInUser.profile_img || ''
     );
+    
+    // Recargar datos del usuario en memoria
+    try {
+      await this.userProvider.reloadUserData();
+      console.log('Usuario actualizado en memoria después de guardar cambios de perfil');
+    } catch (error) {
+      console.error('Error al recargar datos del usuario:', error);
+    }
+    
     this.goBack();
   }
 
@@ -130,20 +139,26 @@ export class SettingAccountComponent implements OnInit {
     email: string,
     phone: string,
     profile_img?: string
-  ) {
-    this.api
-      .updateUser(id, {
-        name: name,
-        email: email,
-        phone: phone,
-        profile_img: profile_img,
-      })
-      .subscribe(
-        (res) => {
-          console.log('User information saved', res);
-        },
-        (err) => console.log(err)
-      );
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.api
+        .updateUser(id, {
+          name: name,
+          email: email,
+          phone: phone,
+          profile_img: profile_img,
+        })
+        .subscribe(
+          (res) => {
+            console.log('User information saved', res);
+            resolve();
+          },
+          (err) => {
+            console.log(err);
+            reject(err);
+          }
+        );
+    });
   }
 
   async updateProfilePicture(imageUrl: string) {
@@ -160,14 +175,27 @@ export class SettingAccountComponent implements OnInit {
     }
   }
 
-  tomarFoto() {
-    this.camaraService
-      .tomarFotoYSubir(this.loggedInUser.email)
-      .then((result) => {
-        console.log('Foto subida:', result);
-        this.imageUrl = result; // Actualiza la URL de la imagen
-        this.loggedInUser.profile_img = result; // Actualiza la imagen del usuario
-      })
-      .catch((err) => console.error('Error al subir la foto', err));
+  async tomarFoto() {
+    try {
+      const result = await this.camaraService.tomarFotoYSubir(this.loggedInUser.email);
+      console.log('Foto subida:', result);
+      this.imageUrl = result; // Actualiza la URL de la imagen
+      this.loggedInUser.profile_img = result; // Actualiza la imagen del usuario
+      
+      // Guardar la imagen en la base de datos
+      await this.updateUser(
+        this.loggedInUser.id,
+        this.loggedInUser.name,
+        this.loggedInUser.email,
+        this.loggedInUser.phone,
+        result
+      );
+      
+      // Recargar datos del usuario en memoria
+      await this.userProvider.reloadUserData();
+      console.log('Usuario actualizado en memoria después de cambiar foto');
+    } catch (err) {
+      console.error('Error al subir la foto', err);
+    }
   }
 }

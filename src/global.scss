@@ -80,7 +80,14 @@
     text-align: center;
     letter-spacing: 0.5px;
 }
-
+.uar-title-dark{
+  font-family: 'Cambai Minimalist', sans-serif;
+  font-size: 20px;
+  font-weight: bold;
+  color: #2d2543;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
 .center-label {
   text-align: center;
   width: 100%;
@@ -620,3 +627,55 @@
 /* (Opcional) Playfair para título si quieres mezcla serif+sans
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap');
 */
+
+/* ============================================
+   Estilos para Alert Biométrico
+   ============================================ */
+.biometric-alert {
+  .alert-wrapper {
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+  
+  .alert-head {
+    h2 {
+      font-size: 22px;
+      font-weight: 600;
+      text-align: center;
+      padding: 15px 10px 5px 10px;
+    }
+  }
+  
+  .alert-message {
+    padding: 10px 20px 20px 20px;
+    text-align: center;
+    
+    p {
+      line-height: 1.5;
+      margin: 0;
+    }
+  }
+  
+  .alert-button-group {
+    padding: 8px;
+    
+    button {
+      margin: 5px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      height: 45px;
+      
+      &.alert-button-ok {
+        background: linear-gradient(45deg, #5305FC, #000000);
+        color: white;
+      }
+      
+      &.alert-button-cancel {
+        background: transparent;
+        color: #666;
+        border: 1px solid #ddd;
+      }
+    }
+  }
+}

@@ -148,4 +148,25 @@ export class InitUserProvider {
     await this.storage.set({ key: 'newEmail', value:newEmail }  );
   }
 
+  // Método para recargar los datos del usuario desde la base de datos
+  async reloadUserData(): Promise<User> {
+    return new Promise((resolve, reject) => {
+      this.api.getUser().subscribe(
+        (user: any) => {
+          if (user) {
+            this.setLoggedInUser(user);
+            console.log('Usuario recargado desde la base de datos:', user);
+            resolve(user);
+          } else {
+            reject('No se encontró el usuario');
+          }
+        },
+        (err) => {
+          console.error('Error al recargar usuario:', err);
+          reject(err);
+        }
+      );
+    });
+  }
+
 }

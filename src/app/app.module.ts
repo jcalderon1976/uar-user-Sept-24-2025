@@ -30,8 +30,8 @@ import { RequestRideComponent } from  './components/request-ride/request-ride.co
 import { PhotoComponent } from './components/photo/photo.component';
 import { PaymentMethodsComponent} from './components/payment-methods/payment-methods.component'
 // AngularFire
-import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-import { provideAuth, getAuth, inMemoryPersistence, indexedDBLocalPersistence } from '@angular/fire/auth';
+import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
+import { provideAuth, getAuth, inMemoryPersistence, indexedDBLocalPersistence, initializeAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 
 //Environment
@@ -88,30 +88,25 @@ import { InitUserProvider } from  './services/inituser/inituser.service';
     }),
     provideAuth(() => {
       console.log('🔒 Initializing Firebase Auth...');
-      const auth = getAuth();
       
-      // Set persistence asynchronously without blocking initialization
-      setTimeout(() => {
-        const isIOS = (window as any).Capacitor?.getPlatform() === 'ios';
-        if (isIOS) {
-          console.log('📱 iOS detected - using inMemoryPersistence');
-          auth.setPersistence(inMemoryPersistence).then(() => {
-            console.log('✅ Persistence set to inMemory');
-          }).catch((error) => {
-            console.warn('⚠️ Could not set persistence:', error);
-          });
-        } else {
-          console.log('🌐 Web detected - using indexedDBLocalPersistence');
-          auth.setPersistence(indexedDBLocalPersistence).then(() => {
-            console.log('✅ Persistence set to indexedDB');
-          }).catch((error) => {
-            console.warn('⚠️ Could not set persistence:', error);
-          });
-        }
-      }, 100);
+      const isIOS = (window as any).Capacitor?.getPlatform() === 'ios';
+      const app = getApp(); // Get the already initialized app
       
-      console.log('✅ Firebase Auth initialized');
-      return auth;
+      if (isIOS) {
+        console.log('📱 iOS detected - initializing with inMemoryPersistence');
+        // Initialize with inMemory persistence to avoid IndexedDB issues in WKWebView
+        const auth = initializeAuth(app, {
+          persistence: inMemoryPersistence,
+          popupRedirectResolver: undefined
+        });
+        console.log('✅ Firebase Auth initialized with inMemory persistence');
+        return auth;
+      } else {
+        console.log('🌐 Web detected - using default persistence');
+        const auth = getAuth(app);
+        console.log('✅ Firebase Auth initialized with default persistence');
+        return auth;
+      }
     }),
     provideFirestore(() => {
       console.log('📄 Initializing Firestore...');

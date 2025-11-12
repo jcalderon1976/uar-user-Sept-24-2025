@@ -18,6 +18,7 @@ import { PhotoComponent } from '../components/photo/photo.component';
 })
 export class Tab3Page {
   @ViewChild(PhotoComponent) photoComponent!: PhotoComponent;
+  @ViewChild('toolbar', { read: ElementRef }) toolbarRef!: ElementRef;
 
   public loggedInUser: User;
   public image: string;
@@ -40,15 +41,41 @@ export class Tab3Page {
   }
 
   ngAfterViewInit() {
+    const toolbarEl = this.toolbarRef.nativeElement;
+    const shadowRoot = toolbarEl.shadowRoot;
+
+    if (shadowRoot) {
+      const style = document.createElement('style');
+      style.textContent = `
+        .toolbar-background {
+          background: linear-gradient(45deg, #5305FC, #000000) !important;
+        }
+      `;
+      shadowRoot.appendChild(style);
+    }
   }
 
-  refreshPage() {
-    this.loggedInUser = this.userProvider.getUserData();
-    this.image =
-      this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
+  async refreshPage() {
+    try {
+      // Recargar datos desde la base de datos
+      await this.userProvider.reloadUserData();
+      
+      // Actualizar datos locales
+      this.loggedInUser = this.userProvider.getUserData();
+      this.image =
+        this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
 
-    if (this.photoComponent) {
-      this.photoComponent.imageUrl = this.image;
+      if (this.photoComponent) {
+        this.photoComponent.imageUrl = this.image;
+      }
+      
+      console.log('Página refrescada con datos actualizados');
+    } catch (error) {
+      console.error('Error al refrescar página:', error);
+      // En caso de error, al menos actualizar desde memoria
+      this.loggedInUser = this.userProvider.getUserData();
+      this.image =
+        this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
     }
   }
 

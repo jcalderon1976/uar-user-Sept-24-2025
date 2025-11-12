@@ -23,6 +23,7 @@
     "@angular/platform-browser": "^19.0.0",
     "@angular/platform-browser-dynamic": "^19.0.0",
     "@angular/router": "^19.0.0",
+    "@aparajita/capacitor-biometric-auth": "^9.0.0",
     "@awesome-cordova-plugins/in-app-browser": "^8.0.2",
     "@capacitor-community/http": "^1.4.1",
     "@capacitor/android": "^6.0.0",

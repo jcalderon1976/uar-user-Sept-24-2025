@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostBinding, OnInit, ViewChild } from '@angular/core';
 import { RideService } from '../../services/ride/ride.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { InitUserProvider } from '../../services/inituser/inituser.service';
@@ -69,6 +69,12 @@ export class PickupPage implements OnInit {
   originMarker!: google.maps.Marker; // ✅ Store tow truck marker
   public oldPosition!: google.maps.LatLngLiteral; // Store the previous position
   public driverInfo!: Driver;
+  isDetailsExpanded = true;
+
+  @HostBinding('class.details-collapsed')
+  get detailsCollapsedClass(): boolean {
+    return !this.isDetailsExpanded;
+  }
 
   constructor(
     public  rideService: RideService,
@@ -103,8 +109,34 @@ export class PickupPage implements OnInit {
 
   }
 
+  toggleDetails(): void {
+    this.isDetailsExpanded = !this.isDetailsExpanded;
+  }
+
 
   async ngOnInit() {
+      // Verificar si viene de PlaceToPay con parámetros
+      this.route.queryParams.subscribe(params => {
+        if (params['paymentStatus']) {
+          console.log('🎉 Retorno de PlaceToPay - Estado:', params['paymentStatus']);
+          console.log('📝 Request ID:', params['requestId']);
+          
+          // Mostrar mensaje según el estado
+          if (params['paymentStatus'] === 'success') {
+            this.util.showToast('✅ Pago completado exitosamente');
+          } else if (params['paymentStatus'] === 'pending') {
+            this.util.showToast('⏳ Pago pendiente de confirmación');
+          }
+          
+          // Limpiar los parámetros de la URL
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: {},
+            replaceUrl: true
+          });
+        }
+      });
+
       await this.calculateRoute();
       this.imageUrl = this.rideService.driverInfo.profile_img?.toString() || this.imageUrl; // Si no hay imagen, usa la imagen por defecto
   }
@@ -146,7 +178,7 @@ export class PickupPage implements OnInit {
             
               
               this.userProvider.setRideId(this.rideId);
-              this.api.getRide(this.rideId).pipe(first()).subscribe(async ride => {
+        this.api.getRide(this.rideId).pipe(first()).subscribe(async ride => {
 
                 if (p2pState) {
                   ride.paymentMethod = p2pState.paymentMethod;
@@ -212,7 +244,7 @@ export class PickupPage implements OnInit {
       this.towTruckMarker.setPosition(
         new google.maps.LatLng(newLocation.lat, newLocation.lng)
       );
-      this.googleMap.googleMap?.panTo(newLocation); // Smooth pan
+          this.googleMap.googleMap?.panTo(newLocation); // Smooth pan
     }
   }
 
@@ -380,7 +412,7 @@ export class PickupPage implements OnInit {
         this.directionsResults$ = this.mapDirectionsService.route(request).pipe(
           map((response) => {
             const leg = response?.result?.routes?.[0]?.legs?.[0];
-    
+
             if (response.result && leg) {
               this.addCustomMarkers(
                 response?.result?.routes?.[0]?.legs?.[0],
@@ -389,10 +421,10 @@ export class PickupPage implements OnInit {
                 driver.location_lng
               ); //Add Custom Icons
               this.getTimer(response);
-            
-            return response.result;
-            }
-            else{
+              this.fitMapToBounds(response.result.routes?.[0]);
+
+              return response.result;
+            } else {
               return;
             }
           })
@@ -428,13 +460,18 @@ export class PickupPage implements OnInit {
     this.directionsResults$ = this.mapDirectionsService.route(request).pipe(
       map((response) => {
         if (response.result) {
-          this.addCustomMarkers(
-            response.result.routes[0].legs[0],
-            false,
-            rideInfo.origin_lat,
-            rideInfo.origin_lng
-          ); //Add Custom Icons
-          this.getTimer(response);
+          const route = response.result.routes?.[0];
+          const leg = route?.legs?.[0];
+          if (leg) {
+            this.addCustomMarkers(
+              leg,
+              false,
+              rideInfo.origin_lat,
+              rideInfo.origin_lng
+            ); //Add Custom Icons
+            this.getTimer(response);
+            this.fitMapToBounds(route);
+          }
         }
         return response.result;
       })
@@ -549,6 +586,30 @@ export class PickupPage implements OnInit {
 
   messageDriver(){
 
+  }
+
+  private fitMapToBounds(route?: google.maps.DirectionsRoute) {
+    if (!route || !this.googleMap?.googleMap) {
+      return;
+    }
+
+    const bounds = new google.maps.LatLngBounds();
+
+    route.legs?.forEach((leg) => {
+      bounds.extend(leg.start_location);
+      bounds.extend(leg.end_location);
+
+      leg.steps?.forEach((step) => {
+        step.path?.forEach((point) => bounds.extend(point));
+      });
+    });
+
+    this.googleMap.googleMap.fitBounds(bounds, {
+      top: 60,
+      bottom: 220,
+      left: 60,
+      right: 60,
+    });
   }
 
 }
