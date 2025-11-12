@@ -44,49 +44,90 @@ export class LoginPage implements OnInit {
   }
 
   async login() {
+     console.log('🔵 LOGIN CLICKED - Starting login process');
+     console.log('Email:', this.user.email);
+     console.log('Password length:', this.user.password?.length);
 
      // Reset previous error states
      this.user.emailError = !this.validateEmail(this.user.email);
      this.passwordError = !this.validatePasswords();
 
      if (this.user.emailError || this.passwordError) {
+      console.log('❌ Validation failed');
       this.utilService.presentAlert('Error','Please correct the highlighted errors.','TRY AGAIN');
       return;
     }
 
+    console.log('✅ Validation passed, attempting Firebase login...');
     try {
+      this.setSpinner();
+      console.log('🔹 Calling api.logIn()...');
       
       this.api.logIn(this.user.email, this.user.password)
-      .subscribe(
-        res => {
-          console.log('[ login.page.login() ]-> (res api.logIn) = res[id] = ', res['id']);
-           
-          this.userProvider.setToken(res['id']);
+      .subscribe({
+        next: async (res) => {
+          console.log('🟢 LOGIN SUCCESS - Got response:', res);
+          console.log('🔹 User ID from Firebase:', res['id']);
+          
+          console.log('🔹 Setting token...');
+          await this.userProvider.setToken(res['id']);
+          console.log('✅ Token set successfully');
 
-            this.userSubscription =  this.api.getUser().subscribe((responseUser) => {
-                console.dir('[ login.page.login() ]-> (res api.getUser) = responseUser = ', responseUser);
+          console.log('🔹 Getting user from Firestore...');
+          this.userSubscription =  this.api.getUser().subscribe({
+            next: (responseUser) => {
+                console.log('🟢 GOT USER FROM FIRESTORE:', responseUser);
+                
+                if (!responseUser) {
+                  console.error('❌ User data is NULL');
+                  this.utilService.presentAlert('Error', 'User data not found. Please try again.', 'OK');
+                  this.clearSpinner();
+                  return;
+                }
+                
+                console.log('🔹 Setting logged in user...');
                 this.userProvider.setLoggedInUser(responseUser);
+                console.log('✅ User set successfully');
+                
                 this.clearSpinner();
-                this.router.navigate(['/tabs']);  // Redirect to home page
-               });
-        }
-        ,async err => {
+                console.log('🔹 Navigating to /tabs...');
+                this.router.navigate(['/tabs']).then(success => {
+                  console.log('✅ Navigation result:', success);
+                });
+            },
+            error: (err) => {
+              console.error('❌ Error getting user from Firestore:', err);
+              this.utilService.presentAlert('Error', 'Failed to load user data: ' + err.message, 'OK');
+              this.clearSpinner();
+            }
+          });
+        },
+        error: async (err) => {
+          console.error('❌ LOGIN FAILED:', err);
           this.utilService.presentAlert('Error', 'Access Denied!! Invalid Credential ' + ( err.message || err.statusText), 'TRY AGAIN');
           this.clearSpinner();
-        });
-    } catch (error) {
-      this.utilService.presentAlert('Error','Login failed. Check your credentials.','TRY AGAIN');
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ EXCEPTION in login():', error);
+      this.utilService.presentAlert('Error','Login failed. Check your credentials: ' + error.message,'TRY AGAIN');
+      this.clearSpinner();
     }
   }
 
   async loginWithGoogle() {
     try {
-      
+      this.setSpinner();
       this.api.loginWithGoogle()
       .subscribe(
-        res => {
-            this.userProvider.setToken(res['id']);
+        async res => {
+            await this.userProvider.setToken(res['id']);
             this.userSubscription =  this.api.getUser().subscribe((responseUser: any) => {
+                if (!responseUser) {
+                  this.utilService.presentAlert('Error', 'User data not found. Please try again.', 'OK');
+                  this.clearSpinner();
+                  return;
+                }
                 this.userProvider.setLoggedInUser(responseUser);
                 this.clearSpinner();
                 this.router.navigate(['/tabs']);  // Redirect to home page
@@ -94,22 +135,27 @@ export class LoginPage implements OnInit {
         }
         ,async err => {
           this.utilService.presentAlert('Error', 'Google Sign-In Failed. Access Denied!! Invalid Credential ', 'TRY AGAIN');
+          this.clearSpinner();
       });
     } catch (error) {
       this.utilService.presentAlert('Error', 'Google Sign-In Failed. Access Denied!! Invalid Credential ', 'TRY AGAIN');
+      this.clearSpinner();
     }
-      
-    
   }
   
    async loginWithMicrosoft() {
     try {
-      
-      this.api.loginWithGoogle()
+      this.setSpinner();
+      this.api.loginMicrosoft()
       .subscribe(
-        res => {
-            this.userProvider.setToken(res['id']);
+        async res => {
+            await this.userProvider.setToken(res['id']);
             this.userSubscription =  this.api.getUser().subscribe((responseUser: any) => {
+                if (!responseUser) {
+                  this.utilService.presentAlert('Error', 'User data not found. Please try again.', 'OK');
+                  this.clearSpinner();
+                  return;
+                }
                 this.userProvider.setLoggedInUser(responseUser);
                 this.clearSpinner();
                 this.router.navigate(['/tabs']);  // Redirect to home page
@@ -117,19 +163,26 @@ export class LoginPage implements OnInit {
         }
         ,async err => {
           this.utilService.presentAlert('Error', 'Microsoft Sign-In Failed. Access Denied!! Invalid Credential ', 'TRY AGAIN');
+          this.clearSpinner();
       });
     } catch (error) {
       this.utilService.presentAlert('Error', 'Microsoft Sign-In Failed. Access Denied!! Invalid Credential ', 'TRY AGAIN');
+      this.clearSpinner();
     }
   }
   async loginWithApple() {
     try {
-      
+      this.setSpinner();
       this.api.loginApple()
       .subscribe(
-        res => {
-            this.userProvider.setToken(res['id']);
+        async res => {
+            await this.userProvider.setToken(res['id']);
             this.userSubscription =  this.api.getUser().subscribe((responseUser: any) => {
+                if (!responseUser) {
+                  this.utilService.presentAlert('Error', 'User data not found. Please try again.', 'OK');
+                  this.clearSpinner();
+                  return;
+                }
                 this.userProvider.setLoggedInUser(responseUser);
                 this.clearSpinner();
                 this.router.navigate(['/tabs']);  // Redirect to home page
@@ -137,9 +190,11 @@ export class LoginPage implements OnInit {
         }
         ,async err => {
           this.utilService.presentAlert('Error', 'Apple Sign-In Failed. Access Denied!! Invalid Credential ', 'TRY AGAIN');
+          this.clearSpinner();
       });
     } catch (error) {
       this.utilService.presentAlert('Error', 'Apple Sign-In Failed. Access Denied!! Invalid Credential ', 'TRY AGAIN');
+      this.clearSpinner();
     }
   }
 

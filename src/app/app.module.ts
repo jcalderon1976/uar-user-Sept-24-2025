@@ -31,7 +31,7 @@ import { PhotoComponent } from './components/photo/photo.component';
 import { PaymentMethodsComponent} from './components/payment-methods/payment-methods.component'
 // AngularFire
 import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideAuth, getAuth, inMemoryPersistence, indexedDBLocalPersistence } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 
 //Environment
@@ -79,9 +79,46 @@ import { InitUserProvider } from  './services/inituser/inituser.service';
   //exports: [MapComponent],
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore()),
+    provideFirebaseApp(() => {
+      console.log('🔥 Initializing Firebase App...');
+      console.log('Firebase config:', environment.firebase);
+      const app = initializeApp(environment.firebase);
+      console.log('✅ Firebase App initialized:', app.name);
+      return app;
+    }),
+    provideAuth(() => {
+      console.log('🔒 Initializing Firebase Auth...');
+      const auth = getAuth();
+      
+      // Set persistence asynchronously without blocking initialization
+      setTimeout(() => {
+        const isIOS = (window as any).Capacitor?.getPlatform() === 'ios';
+        if (isIOS) {
+          console.log('📱 iOS detected - using inMemoryPersistence');
+          auth.setPersistence(inMemoryPersistence).then(() => {
+            console.log('✅ Persistence set to inMemory');
+          }).catch((error) => {
+            console.warn('⚠️ Could not set persistence:', error);
+          });
+        } else {
+          console.log('🌐 Web detected - using indexedDBLocalPersistence');
+          auth.setPersistence(indexedDBLocalPersistence).then(() => {
+            console.log('✅ Persistence set to indexedDB');
+          }).catch((error) => {
+            console.warn('⚠️ Could not set persistence:', error);
+          });
+        }
+      }, 100);
+      
+      console.log('✅ Firebase Auth initialized');
+      return auth;
+    }),
+    provideFirestore(() => {
+      console.log('📄 Initializing Firestore...');
+      const firestore = getFirestore();
+      console.log('✅ Firestore initialized');
+      return firestore;
+    }),
     provideNgxMask(),
     GmapService,
     InitUserProvider,

@@ -11,12 +11,12 @@ export const environment = {
   carMakeUrl: 'https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json',
   carModelApiUrl: 'https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/',
   emailApiUrl: 'http://localhost:3000',
-  production: true,
+  production: false,
   disableLogin: true,
   COUNTRY: 'PR',
   GOOGLE_MAPS_API_KEY: 'AIzaSyDhMwXI-fZPAh4sQT1cNhvU4extr3lzTmM',
                        //'AIzaSyBuc0xmVegDEXFCXN6os-rbr8qslPwW-yg',
-  firebase: {  
+  firebase: {
     apiKey: "AIzaSyCN-au8RKgtZLvJdIYD5IFwiQhXUSaL3n8",
     authDomain: "uar-platform.firebaseapp.com",
     projectId: "uar-platform",
@@ -26,7 +26,10 @@ export const environment = {
     measurementId: "G-SX0YWPBGHD"
   },
   IONIC_STORAGE: 'userdb',
-  FEE: 0.75 ,
+  FEE: 3.50 ,
+  BASE_FEE: 24.69, 
+  IVA_FEE: .19,
+  SEARCH_DRIVER_MSG: 'Buscando Chofer, Por favor Espere...',
   DRIVER_DELAY_MSG: 'Driver is taking longer than usual! please try again later',
   DRIVER_REJECTED_MSG: 'Driver rejected your booking',
   LOGOUT_CONFIRMATION: 'Are you sure you want to logout?',
@@ -297,16 +300,6 @@ export const environment = {
      apiUrl : 'https://sandbox.wompi.co/v1',
   },
 
-  /*
-  En PlacetoPay WebCheckout:
-  
-  returnUrl: Adónde el navegador del usuario será redirigido cuando termine el flujo (aprobado, rechazado o pendiente). Es una ruta de tu front donde muestras el 
-             resultado y consultas el estado final.
-  
-  notificationUrl: adónde PlacetoPay envía una notificación asíncrona (webhook, server-to-server) con el estado de la transacción, aunque el usuario no regrese 
-                   a tu sitio.
-
-   */
   PLACE2PAY:{
     login : 'b6d3d73d93c0b6a98f48f7a8fe778fa6',
     secretKey : 'OH5QJ7hQaK84yfn7',

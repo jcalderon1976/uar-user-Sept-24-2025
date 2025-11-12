@@ -142,6 +142,7 @@ export class UtilService {
 
   async getCurrentLatLng() {
     this.resetCoordinates();
+   // await Geolocation.requestPermissions();
     const position = await Geolocation.getCurrentPosition();
     this.coordinates = position.coords;
     console.log('Coordinates:', this.coordinates);
