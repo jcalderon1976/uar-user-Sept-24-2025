@@ -144,7 +144,7 @@ export class CarInfoComponent implements OnInit {
     };
   }
 
-  saveCarInfo() {
+  async saveCarInfo() {
     const userId = this.loggedInUser.id;
 
     const carInfo = {
@@ -156,8 +156,17 @@ export class CarInfoComponent implements OnInit {
     };
 
     this.apiService.updateUser(userId, { car: carInfo }).subscribe(
-      () => {
+      async () => {
         console.log('Car information updated successfully');
+        
+        // Actualizar el usuario en memoria
+        try {
+          await this.userProvider.reloadUserData();
+          console.log('Usuario actualizado en memoria después de guardar carro');
+        } catch (error) {
+          console.error('Error al recargar datos del usuario:', error);
+        }
+        
         this.closeModal();
       },
       (error) => {

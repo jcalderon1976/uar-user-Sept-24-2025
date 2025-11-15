@@ -30,8 +30,8 @@ import { RequestRideComponent } from  './components/request-ride/request-ride.co
 import { PhotoComponent } from './components/photo/photo.component';
 import { PaymentMethodsComponent} from './components/payment-methods/payment-methods.component'
 // AngularFire
-import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
+import { provideAuth, getAuth, inMemoryPersistence, indexedDBLocalPersistence, initializeAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 
 //Environment
@@ -79,9 +79,41 @@ import { InitUserProvider } from  './services/inituser/inituser.service';
   //exports: [MapComponent],
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore()),
+    provideFirebaseApp(() => {
+      console.log('🔥 Initializing Firebase App...');
+      console.log('Firebase config:', environment.firebase);
+      const app = initializeApp(environment.firebase);
+      console.log('✅ Firebase App initialized:', app.name);
+      return app;
+    }),
+    provideAuth(() => {
+      console.log('🔒 Initializing Firebase Auth...');
+      
+      const isIOS = (window as any).Capacitor?.getPlatform() === 'ios';
+      const app = getApp(); // Get the already initialized app
+      
+      if (isIOS) {
+        console.log('📱 iOS detected - initializing with inMemoryPersistence');
+        // Initialize with inMemory persistence to avoid IndexedDB issues in WKWebView
+        const auth = initializeAuth(app, {
+          persistence: inMemoryPersistence,
+          popupRedirectResolver: undefined
+        });
+        console.log('✅ Firebase Auth initialized with inMemory persistence');
+        return auth;
+      } else {
+        console.log('🌐 Web detected - using default persistence');
+        const auth = getAuth(app);
+        console.log('✅ Firebase Auth initialized with default persistence');
+        return auth;
+      }
+    }),
+    provideFirestore(() => {
+      console.log('📄 Initializing Firestore...');
+      const firestore = getFirestore();
+      console.log('✅ Firestore initialized');
+      return firestore;
+    }),
     provideNgxMask(),
     GmapService,
     InitUserProvider,

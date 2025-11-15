@@ -1,7 +1,7 @@
 //CORE
-import { Component, Input,  ViewChild    } from '@angular/core';
+import { Component, Input,  ViewChild, OnInit    } from '@angular/core';
 import { IonSearchbar } from '@ionic/angular';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { GoogleMap, MapDirectionsRenderer, MapDirectionsService, MapInfoWindow  } from '@angular/google-maps';
 
 import { map, Observable, Subject, first, interval, take, takeUntil } from 'rxjs';
@@ -28,7 +28,7 @@ import { Timestamp } from 'firebase/firestore';
   styleUrls: ['./confirmRide.page.scss'],
   standalone: false,
 })
-export class confirmRidePage {
+export class confirmRidePage implements OnInit {
  
   @Input() country!: string;
   @ViewChild(GoogleMap, { static: false }) googlemap!: GoogleMap;
@@ -76,6 +76,7 @@ export class confirmRidePage {
       private mapDirectionsService: MapDirectionsService,
       private util: UtilService,
       private router: Router,
+      private route: ActivatedRoute,
       private api: APIService,
       private p2p: PlacetoPayService,
       private store: AppStorage
@@ -104,6 +105,29 @@ export class confirmRidePage {
         paymentMethod: '',
         tow_type: ''
       };
+       }
+
+       ngOnInit() {
+        // Verificar si viene de PlaceToPay con parámetros
+        this.route.queryParams.subscribe(params => {
+          if (params['paymentStatus']) {
+            console.log('🎉 Retorno de PlaceToPay - Estado:', params['paymentStatus']);
+            
+            // Mostrar mensaje según el estado
+            if (params['paymentStatus'] === 'cancelled') {
+              this.util.showToast('❌ Pago cancelado');
+            } else if (params['paymentStatus'] === 'rejected') {
+              this.util.showToast('❌ Pago rechazado');
+            }
+            
+            // Limpiar los parámetros de la URL
+            this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: {},
+              replaceUrl: true
+            });
+          }
+        });
        }
 
        start() {
@@ -223,17 +247,24 @@ export class confirmRidePage {
                 this.rideService.totalFee = this.rideService.getTotalFare();
             }
             
-            this.endLocation = {
-              lat: this.rideService.destination.lat,
-              lng: this.rideService.destination.lng,
-            };
+          this.endLocation = {
+            lat: this.rideService.destination.lat,
+            lng: this.rideService.destination.lng,
+          };
 
-            this.endIcon = {
-              url: '../../assets/images/pin.png', // 🛠 Change to your destination marker
-              scaledSize: new google.maps.Size(50, 50)
-            };
+          this.endIcon = {
+            url: '../../assets/images/pin.png', // 🛠 Change to your destination marker
+            scaledSize: new google.maps.Size(50, 50)
+          };
 
-            this.fitToMarkers({ lat: this.rideService.origin.lat, lng: this.rideService.origin.lng }, { lat: this.rideService.destination.lat, lng: this.rideService.destination.lng })
+          if (
+            !this.fitMapToRoute(items?.routes?.[0])
+          ) {
+            this.fitToMarkers(
+              { lat: this.rideService.origin.lat, lng: this.rideService.origin.lng },
+              { lat: this.rideService.destination.lat, lng: this.rideService.destination.lng }
+            );
+          }
         });
 
   
@@ -256,26 +287,65 @@ export class confirmRidePage {
               this.rideService.totalFee = this.rideService.getTotalFare();
           }
           
-          this.endLocation = {
-            lat: this.rideService.destination.lat,
-            lng: this.rideService.destination.lng,
-          };
+        this.endLocation = {
+          lat: this.rideService.destination.lat,
+          lng: this.rideService.destination.lng,
+        };
 
-          this.endIcon = {
-            url: '../../assets/images/pin.png', // 🛠 Change to your destination marker
-            scaledSize: new google.maps.Size(50, 50)
-          };
+        this.endIcon = {
+          url: '../../assets/images/pin.png', // 🛠 Change to your destination marker
+          scaledSize: new google.maps.Size(50, 50)
+        };
 
-          this.fitToMarkers({ lat: this.rideService.origin.lat, lng: this.rideService.origin.lng }, { lat: this.rideService.destination.lat, lng: this.rideService.destination.lng })
+        if (
+          !this.fitMapToRoute(items?.routes?.[0])
+        ) {
+          this.fitToMarkers(
+            { lat: this.rideService.origin.lat, lng: this.rideService.origin.lng },
+            { lat: this.rideService.destination.lat, lng: this.rideService.destination.lng }
+          );
+        }
       });
 
+    }
+
+    private fitMapToRoute(route?: google.maps.DirectionsRoute): boolean {
+      const mapInstance = this.googlemap?.googleMap;
+
+      if (!route || !mapInstance) {
+        return false;
+      }
+
+      const bounds = new google.maps.LatLngBounds();
+
+      route.legs?.forEach((leg) => {
+        bounds.extend(leg.start_location);
+        bounds.extend(leg.end_location);
+
+        leg.steps?.forEach((step) => {
+          step.path?.forEach((point) => bounds.extend(point));
+        });
+      });
+
+      if (bounds.isEmpty()) {
+        return false;
+      }
+
+      mapInstance.fitBounds(bounds, {
+        top: 40,
+        left: 40,
+        right: 40,
+        bottom: 280,
+      });
+
+      return true;
     }
 
     fitToMarkers(origin: google.maps.LatLngLiteral, dest: google.maps.LatLngLiteral) {
         const b = new google.maps.LatLngBounds();
         b.extend(origin);
         b.extend(dest);
-        this.googlemap.fitBounds(b, { top: 10, right: 10, bottom: 10, left: 10 });
+        this.googlemap.fitBounds(b, { top: 40, right: 40, bottom: 280, left: 40 });
     }
 
 

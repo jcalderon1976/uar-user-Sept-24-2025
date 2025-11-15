@@ -20,25 +20,119 @@
     height: 100%;
   }
   
-  .camera-button {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    transform: translate(0%, 30%);
-    z-index: 10;
+.camera-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  transform: translate(0%, 30%);
+  z-index: 10;
+
+  // Tamaño fijo para mantener forma circular perfecta
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   
-    width: 44px;
-    height: 44px;
-    --border-radius: 50%;
-    --padding-start: 0;
-    --padding-end: 0;
-    --padding-top: 0;
-    --padding-bottom: 0;
+  // Forzar que sea circular
+  --border-radius: 50% !important;
+  border-radius: 50% !important;
   
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  // Remover padding para mantener forma circular
+  --padding-start: 0 !important;
+  --padding-end: 0 !important;
+  --padding-top: 0 !important;
+  --padding-bottom: 0 !important;
+  
+  // Centrar el ícono
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  // Sombra para destacar
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  
+  // Asegurar overflow hidden para mantener bordes circulares
+  overflow: hidden;
+  
+  // Transition suave para hover
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translate(0%, 30%) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
+  
+  &:active {
+    transform: translate(0%, 30%) scale(0.95);
+  }
+  
+  // Forzar el botón interno a ser circular también
+  &::part(native) {
+    border-radius: 50% !important;
+    padding: 0 !important;
+  }
+  
+  // Estilos del ícono
+  ion-icon {
+    font-size: 20px;
+    margin: 0;
+  }
+}
+
+// Media queries para responsive
+@media (max-width: 480px) {
+  .camera-button {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    
+    ion-icon {
+      font-size: 18px;
+    }
+  }
+  
+  .avatar-container {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+@media (min-width: 768px) {
+  .camera-button {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    
+    ion-icon {
+      font-size: 22px;
+    }
+  }
+  
+  .avatar-container {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .camera-button {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    
+    ion-icon {
+      font-size: 24px;
+    }
+  }
+  
+  .avatar-container {
+    width: 160px;
+    height: 160px;
+  }
+}
   
 
   .button-container {

@@ -38,12 +38,16 @@ export class APIService implements OnDestroy {
   }
 
   logIn(username: string, password: string): Observable<any> {
+    console.log('🔷 API.logIn() called with email:', username);
     
     return new Observable((observer) => {
     this.auth.login(username, password)
        .then(user => {
+         console.log('✅ Firebase Auth SUCCESS - User UID:', user.uid);
          observer.next({ id: user.uid });
+         observer.complete();
        }).catch(err => {
+         console.error('❌ Firebase Auth FAILED:', err);
          observer.error(err);
        }); 
    });  
@@ -67,8 +71,12 @@ export class APIService implements OnDestroy {
     
   return new Observable((observer) => {
   this.auth.loginMicrosoft()
-     .then(user => {   //observer.next({ id: user.uid });
-     }).catch(err => { observer.error(err);
+     .then(user => {
+       if (user) {
+         observer.next({ id: user.uid });
+       }
+     }).catch(err => { 
+       observer.error(err);
      }); 
  });  
 
@@ -78,8 +86,12 @@ export class APIService implements OnDestroy {
     
   return new Observable((observer) => {
   this.auth.loginApple()
-     .then(user => { //  observer.next({ id: user.uid });
-     }).catch(err => { observer.error(err);
+     .then(user => {
+       if (user) {
+         observer.next({ id: user.uid });
+       }
+     }).catch(err => { 
+       observer.error(err);
      }); 
  });  
 

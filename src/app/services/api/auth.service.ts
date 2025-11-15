@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { Auth, signOut , signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, reload,updateEmail,
-         GoogleAuthProvider ,OAuthProvider , sendEmailVerification ,signInWithRedirect , getAuth, getIdToken, getIdTokenResult} from '@angular/fire/auth';
+         GoogleAuthProvider ,OAuthProvider , sendEmailVerification ,signInWithRedirect , getAuth, getIdToken, getIdTokenResult, setPersistence, browserLocalPersistence, inMemoryPersistence, indexedDBLocalPersistence, initializeAuth, connectAuthEmulator} from '@angular/fire/auth';
 import { FirestoreService } from '../api/firestore.service';
 import { Firestore } from '@angular/fire/firestore';
 import { User } from '../../models/user';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { Capacitor } from '@capacitor/core';
 
 @Injectable({
   providedIn: 'root'
@@ -14,12 +15,25 @@ export class AuthService {
   popupOpen = false; // prevent multiple popups
   private apiUrl = environment.emailApiUrl; //   'http://localhost:3000';
   private googleProvider = new GoogleAuthProvider();
+  private isInitialized = false;
 
 
   constructor(private auth: Auth ,
               private http: HttpClient,
               private store: FirestoreService  
-  ) {}
+  ) {
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
+    console.log('🔥 AuthService - Initializing...');
+    console.log('Platform:', Capacitor.getPlatform());
+    console.log('Is Native:', Capacitor.isNativePlatform());
+    
+    // Mark as initialized immediately - persistence will be handled by Firebase SDK automatically
+    this.isInitialized = true;
+    console.log('✅ Auth initialized');
+  }
 
   // ✅ Register a new user
    createAccount(user: User): Promise<any> {
@@ -45,13 +59,33 @@ export class AuthService {
 
   // ✅ Login existing user
   async login(email: string, password: string) {
+    console.log('🔷 AuthService.login() - Starting Firebase Auth...');
+    console.log('Auth instance:', this.auth ? '✅ Initialized' : '❌ NULL');
+    console.log('Is initialized:', this.isInitialized);
+    console.log('Attempting login with email:', email);
+    console.log('Auth current user:', this.auth.currentUser);
+    console.log('Auth config:', this.auth.config);
+    
     try {
+      console.log('🔹 Calling signInWithEmailAndPassword...');
+      console.log('🔹 Timestamp:', new Date().toISOString());
+      console.log('🔹 Network status:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
+      
       const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
       
-
+      console.log('✅✅✅ Firebase Auth SUCCESS!');
+      console.log('User UID:', userCredential.user.uid);
+      console.log('User email:', userCredential.user.email);
+      console.log('Email verified:', userCredential.user.emailVerified);
+      
       return userCredential.user;
-    } catch (error) {
-      console.error('Login Error:', error);
+    } catch (error: any) {
+      console.error('❌❌❌ Login Error:', error);
+      console.error('Error code:', error?.code);
+      console.error('Error message:', error?.message);
+      console.error('Error name:', error?.name);
+      console.error('Error stack:', error?.stack);
+      console.error('Full error object:', error);
       throw error;
     }
   }
@@ -70,7 +104,7 @@ export class AuthService {
   // ✅ Microsoft Sign-In Using Firebase
   async loginMicrosoft() {
     
-    if (this.popupOpen) return;
+    if (this.popupOpen) return Promise.reject('Popup already open');
 
     this.popupOpen = true;
 
@@ -78,12 +112,14 @@ export class AuthService {
       try {
         const result = await signInWithPopup(this.auth, provider);
         console.log('Logged in successfully:', result.user);
+        return result.user;
       } catch (error: any) {
         if (error.code === 'auth/cancelled-popup-request') {
           console.warn('Popup request cancelled.');
         } else {
           console.error('Error during Microsoft login:', error);
         }
+        throw error;
       } finally {
         this.popupOpen = false;
       }
@@ -91,12 +127,15 @@ export class AuthService {
   
  // ✅ Apple Sign-In Using Firebase
   async loginApple() {
-    const provider = new OAuthProvider('apple.com');
-    await signInWithPopup(this.auth, provider).then((result) => {
+    try {
+      const provider = new OAuthProvider('apple.com');
+      const result = await signInWithPopup(this.auth, provider);
       console.log('Apple login successful:', result.user);
-    }).catch((error) => {
+      return result.user;
+    } catch (error) {
       console.error('Error during Apple login:', error);
-    });
+      throw error;
+    }
   }
 
   // ✅ Forgot Password

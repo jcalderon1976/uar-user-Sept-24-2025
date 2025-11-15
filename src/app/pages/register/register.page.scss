@@ -100,17 +100,39 @@ ion-content {
   transform: translate(0%, 30%);
   z-index: 10;
 
-  width: 44px;
-  height: 44px;
-  --border-radius: 50%;
+  // Tamaño del botón - usar min() para que sea responsive
+  width: min(44px, 15vw);
+  height: min(44px, 15vw);
+  min-width: 36px;
+  min-height: 36px;
+  
+  // Forzar forma circular perfecta
+  --border-radius: 50% !important;
+  border-radius: 50% !important;
+  
+  // Eliminar padding para mantener círculo perfecto
   --padding-start: 0;
   --padding-end: 0;
   --padding-top: 0;
   --padding-bottom: 0;
+  padding: 0;
 
+  // Centrar icono
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  // Asegurar que el icono se ajuste al tamaño del botón
+  ion-icon {
+    font-size: clamp(16px, 5vw, 20px);
+  }
+  
+  // Prevenir deformación en diferentes dispositivos
+  flex-shrink: 0;
+  overflow: hidden;
+  
+  // Mejorar sombra para mejor visibilidad
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 

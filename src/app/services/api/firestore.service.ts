@@ -21,8 +21,24 @@ export class FirestoreService implements OnDestroy {
   }
 
   async createWithId<T extends BaseDatabaseModel>(collectionName: string, data: T): Promise<void> {
-    const ref = doc(this.firestore, collectionName, data.id) as DocumentReference<T>;
-    await setDoc(ref, this.addCreatedAt(data));
+    console.log('🔥 createWithId - Starting...');
+    console.log('Collection:', collectionName);
+    console.log('Data ID:', data.id);
+    console.log('Data:', data);
+    
+    try {
+      const ref = doc(this.firestore, collectionName, data.id) as DocumentReference<T>;
+      console.log('📄 Document reference created:', ref.path);
+      
+      const dataToSave = this.addCreatedAt(data);
+      console.log('💾 Saving data:', dataToSave);
+      
+      await setDoc(ref, dataToSave);
+      console.log('✅ Document saved successfully!');
+    } catch (error) {
+      console.error('❌ Error in createWithId:', error);
+      throw error;
+    }
   } 
 
   async setUserId(id: string) {

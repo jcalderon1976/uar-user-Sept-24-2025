@@ -33,6 +33,29 @@ export class Tab2Page implements OnInit {
   loadingMore = false;
   userId!: string;
 
+  private mergeUniqueRides(
+    existingRides: HistoryRide[],
+    incomingRides: HistoryRide[]
+  ): HistoryRide[] {
+    const ridesById = new Map<string, HistoryRide>();
+
+    [...existingRides, ...incomingRides].forEach((ride) => {
+      ridesById.set(ride.id, ride);
+    });
+
+    return Array.from(ridesById.values()).sort((a, b) => {
+      const aMillis =
+        typeof a.createdAt?.toMillis === 'function'
+          ? a.createdAt.toMillis()
+          : 0;
+      const bMillis =
+        typeof b.createdAt?.toMillis === 'function'
+          ? b.createdAt.toMillis()
+          : 0;
+      return bMillis - aMillis;
+    });
+  }
+
   constructor(
     private api: APIService,
     private userProvider: InitUserProvider,
@@ -101,13 +124,14 @@ export class Tab2Page implements OnInit {
           async (rides: HistoryRide[]) => {
             if (rides.length > 0) {
               // 1. Convierte primero (esto NO tiene direcciones aún)
-              this.rides = this.util.latLngConverterSQL(rides);
+              const normalizedRides =
+                this.util.latLngConverterSQL(rides) as HistoryRide[];
 
               // 2. Actualiza las direcciones
-              await this.updateRides(rides);
+              await this.updateRides(normalizedRides);
 
               // 3. Asigna a this.rides después que todo esté listo
-              this.rides = rides;
+              this.rides = this.mergeUniqueRides(this.rides, normalizedRides);
 
               // 4. Actualiza lastDoc
               this.lastDoc = rides[rides.length - 1][
@@ -142,9 +166,11 @@ export class Tab2Page implements OnInit {
 
       if (moreRides && moreRides.length > 0) {
         // 🔸 Actualiza direcciones antes de asignar
-        await this.updateRides(moreRides);
+        const normalizedMoreRides =
+          this.util.latLngConverterSQL(moreRides) as HistoryRide[];
+        await this.updateRides(normalizedMoreRides);
 
-        this.rides = [...this.rides, ...moreRides];
+        this.rides = this.mergeUniqueRides(this.rides, normalizedMoreRides);
         this.lastDoc = moreRides[moreRides.length - 1][
           '__snapshot__'
         ] as QueryDocumentSnapshot<DocumentData>; // ✅ Asegurar el tipo correcto
