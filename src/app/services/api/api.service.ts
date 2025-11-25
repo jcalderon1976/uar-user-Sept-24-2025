@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { Observable, from } from 'rxjs';
+import { Observable, from, throwError } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
 import { FirestoreService } from './firestore.service';
 import { Subscription ,Subject} from 'rxjs';
 import { doc , QueryDocumentSnapshot, QuerySnapshot, DocumentData ,collection, DocumentSnapshot } from 'firebase/firestore';
@@ -126,10 +127,20 @@ export class APIService implements OnDestroy {
     
   }
   setRideRejected(rideId: any): Observable<any> {
-
-    console.log('setRideRejected Start');
-    return this.updateRideData(rideId, { user_rejected: true })
-            
+    console.log('🔄 setRideRejected Start - rideId:', rideId);
+    
+    if (!rideId || rideId === null || rideId === '') {
+      console.error('❌ setRideRejected: rideId es inválido:', rideId);
+      return from(Promise.reject(new Error('rideId es inválido')));
+    }
+    
+    return this.updateRideData(rideId, { user_rejected: true }).pipe(
+      tap(() => console.log('✅ setRideRejected: Campo user_rejected actualizado a true para rideId:', rideId)),
+      catchError((error) => {
+        console.error('❌ setRideRejected Error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   updateRideData(rideId :any, data : any): Observable<any> {

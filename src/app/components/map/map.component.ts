@@ -5,6 +5,7 @@ import { TrackService } from 'src/app/services/track/track.service';
 import { UtilService } from 'src/app/services/util/util.service';
 import { environment } from 'src/environments/environment';
 import { InitUserProvider } from '../../services/inituser/inituser.service';
+import { RideService } from '../../services/ride/ride.service';
 
 @Component({
   selector: 'app-map',
@@ -27,8 +28,8 @@ export class MapComponent  implements OnInit, OnDestroy{
   source_marker: any;
   destination_marker: any;
   trackSub!: Subscription;
-  sourceIconUrl = 'assets/images/location2.png'; //'assets/imgs/towTruck.png';
-  destinationIconUrl = 'assets/images/location2.png';
+  sourceIconUrl = 'assets/images/location3.png'; //'assets/imgs/towTruck.png';
+  destinationIconUrl = 'assets/images/location3.png';
   linePath: any;
 
   constructor(
@@ -36,7 +37,8 @@ export class MapComponent  implements OnInit, OnDestroy{
     private renderer: Renderer2,
     private track: TrackService,
     private util: UtilService,
-    private userProvider: InitUserProvider
+    private userProvider: InitUserProvider,
+    private rideService: RideService
   ) { 
   }
 
@@ -110,8 +112,16 @@ export class MapComponent  implements OnInit, OnDestroy{
   
     // Origins, anchor positions and coordinates of the marker increase in the X
     // direction to the right and in the Y direction down.
+    // Usar marcador personalizado con foto del usuario para source_icon
+    // Primero intentar usar la imagen guardada en memoria (evita problemas de CORS)
+    const imageInMemory = this.userProvider.getUserProfileImageUrl();
+    const loggedInUser = this.userProvider.getUserData();
+    // Si hay imagen en memoria, usarla; si no, pasar null para que use la imagen por defecto
+    const userImageUrl = imageInMemory || loggedInUser?.profile_img || null;
+    const customSourceIconUrl = await this.rideService.createCustomMarkerIcon(userImageUrl);
+    
     const source_icon = {
-      url: this.sourceIconUrl,
+      url: customSourceIconUrl,
       // This marker is 20 pixels wide by 32 pixels high.
       scaledSize: new google.maps.Size(32, 32),
       // The origin for this image is (0, 0).
@@ -127,8 +137,12 @@ export class MapComponent  implements OnInit, OnDestroy{
       type: "poly",
     };
 
+    // Usar marcador personalizado con foto del usuario para destination_icon también
+    // Usar la misma imagen en memoria o URL que ya obtuvimos arriba
+    const customDestinationIconUrl = await this.rideService.createCustomMarkerIcon(userImageUrl);
+    
      const destination_icon = {
-      url: this.destinationIconUrl,
+      url: customDestinationIconUrl,
       scaledSize: new googleMaps.Size(32,32), //scaled size
       origin: new googleMaps.Point(0,0), //origin
       anchor: new googleMaps.Point(10,32) //anchor

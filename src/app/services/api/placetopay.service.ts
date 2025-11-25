@@ -338,7 +338,8 @@ export class PlacetoPayService {
          // internalReference,
          // receipt
         }); 
-
+        
+       
         // window.open(json.processUrl, '_blank');
         //window.location.href = json.processUrl;
 

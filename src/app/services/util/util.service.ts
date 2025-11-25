@@ -171,10 +171,29 @@ export class UtilService {
 
   async getCurrentLatLng() {
     this.resetCoordinates();
-   // await Geolocation.requestPermissions();
-    const position = await Geolocation.getCurrentPosition();
-    this.coordinates = position.coords;
-    console.log('Coordinates:', this.coordinates);
+    
+    // Solicitar permisos de ubicación (obligatorio en Android)
+    try {
+      const permissions = await Geolocation.checkPermissions();
+      console.log('📋 Permisos de ubicación:', permissions);
+      
+      if (permissions.location !== 'granted') {
+        console.log('🔐 Solicitando permisos de ubicación...');
+        const requestResult = await Geolocation.requestPermissions();
+        console.log('✅ Resultado de solicitud de permisos:', requestResult);
+        
+        if (requestResult.location !== 'granted') {
+          throw new Error('Permiso de ubicación denegado');
+        }
+      }
+      
+      const position = await Geolocation.getCurrentPosition();
+      this.coordinates = position.coords;
+      console.log('Coordinates:', this.coordinates);
+    } catch (error) {
+      console.error('❌ Error obteniendo ubicación:', error);
+      throw error;
+    }
   }
 
   resetCoordinates() {

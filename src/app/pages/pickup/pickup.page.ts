@@ -17,6 +17,8 @@ import { first } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { take } from 'rxjs/operators';
 import { AppStorage } from '../../services/api/app-storage.service';
+import { ChatModalComponent } from '../../components/chat-modal/chat-modal.component';
+import { ChatService } from '../../services/api/chat.service';
 
 declare var google: any;
 
@@ -89,7 +91,8 @@ export class PickupPage implements OnInit {
     private route: ActivatedRoute, 
     private router: Router,
     private http: HttpClient,
-    private store: AppStorage
+    private store: AppStorage,
+    private chatService: ChatService
   ) {}
 
 
@@ -107,10 +110,34 @@ export class PickupPage implements OnInit {
       this.requestId = fromState.requestId;
     } */
 
+    // Verificar si hay un ride activo y restaurar el listener si es necesario
+    const user = this.userProvider.getUserData();
+    if (user?.rideId && !this.listenerId) {
+      // Hay un ride activo pero el listener no está corriendo
+      console.log('🔄 Restaurando listener para ride activo:', user.rideId);
+      // Verificar el estado del ride antes de restaurar el listener
+      this.api.getRide(user.rideId).pipe(first()).subscribe(async ride => {
+        const isActiveRide = ride && 
+          !ride.ride_completed && 
+          !ride.driver_rejected && 
+          !ride.user_rejected;
+        
+        if (isActiveRide) {
+          // Restaurar el listener solo si el ride está activo
+          this.setRideStatusListener();
+        }
+      });
+    }
   }
 
   toggleDetails(): void {
     this.isDetailsExpanded = !this.isDetailsExpanded;
+    // Ajustar el mapa después de cambiar el estado
+    setTimeout(() => {
+      if (this.googleMap && this.googleMap.googleMap) {
+        google.maps.event.trigger(this.googleMap.googleMap, 'resize');
+      }
+    }, 300); // Esperar a que termine la transición CSS
   }
 
 
@@ -171,6 +198,7 @@ export class PickupPage implements OnInit {
                 console.log('Logged In User:', p2pState.loggedInUser);
                 console.log('Timestamp:', p2pState.timestamp);
                 this.rideId = p2pState.loggedInUser.rideId;
+                this.requestId = p2pState.requestId;
                } 
                else{
                 console.log('No P2P state found in storage.');
@@ -178,57 +206,58 @@ export class PickupPage implements OnInit {
             
               
               this.userProvider.setRideId(this.rideId);
-        this.api.getRide(this.rideId).pipe(first()).subscribe(async ride => {
+              this.api.getRide(this.rideId).pipe(first()).subscribe(async ride => {
 
-                if (p2pState) {
-                  ride.paymentMethod = p2pState.paymentMethod;
-                }
-                else{
-                  ride.paymentMethod = 'cash';
-                }
-                ride.id = this.rideId;
-                Object.assign(this.rideService.rideInfo, ride);
-                
-                //graba los cambio en la base de datos
-                await this.rideService.setRideInfo(ride).then(async result => {
-                  this.rideService.destinationAddress = ride.destination_address; 
-                  this.api.updateRideData(this.rideId, ride);
-        
-                  this.rideService.origin = this.rideService.origin ?? {
-                    lat: Number(ride.origin_lat),
-                    lng: Number(ride.origin_lng),
-                  }; 
-                
-                  this.rideService.destination = this.rideService.destination ?? {
-                    lat: Number(ride.destination_lat),
-                    lng: Number(ride.destination_lng),
-                  };
+                      if (p2pState) {
+                        ride.paymentMethod = p2pState.paymentMethod;
+                        ride.requestId = p2pState.requestId;
+                      }
+                      else{
+                        ride.paymentMethod = 'cash';
+                      }
+                      ride.id = this.rideId;
+                      Object.assign(this.rideService.rideInfo, ride);
+                      
+                      //graba los cambio en la base de datos
+                      await this.rideService.setRideInfo(ride).then(async result => {
+                        this.rideService.destinationAddress = ride.destination_address; 
+                        this.api.updateRideData(this.rideId, ride);
+              
+                        this.rideService.origin = this.rideService.origin ?? {
+                          lat: Number(ride.origin_lat),
+                          lng: Number(ride.origin_lng),
+                        }; 
+                      
+                        this.rideService.destination = this.rideService.destination ?? {
+                          lat: Number(ride.destination_lat),
+                          lng: Number(ride.destination_lng),
+                        };
 
-                  this.center = {
-                    lat: ride.origin_lat,
-                    lng: ride.origin_lng,
-                  };
-                  this.setRideStatusListener();
+                        this.center = {
+                          lat: ride.origin_lat,
+                          lng: ride.origin_lng,
+                        };
+                        this.setRideStatusListener();
 
-                  //Get the driver Location
-                  this.driverId = ride['driverId'];
+                        //Get the driver Location
+                        this.driverId = ride['driverId'];
 
-                  if(this.driverId != null && this.driverId != undefined){
-                      await this.api.getDriver(this.driverId).subscribe(
-                              async driver => {
-                                  this.rideService.driverInfo.car_brand = driver.car.make?.toString();
-                                  this.rideService.driverInfo.car_model = driver.car.model?.toString();
-                                  this.rideService.driverInfo.car_color = driver.car.color?.toString();
-                                  this.rideService.driverInfo.car_license_plate = driver.car.plate_number?.toString();
-                                  this.imageUrl = driver.profile_img?.toString() || this.imageUrl; // Si no hay imagen, usa la imagen por defecto
-                              },
-                              err => console.log(err)
-                            );
-                  } 
-                });
-                
+                        if(this.driverId != null && this.driverId != undefined){
+                            await this.api.getDriver(this.driverId).subscribe(
+                                    async driver => {
+                                        this.rideService.driverInfo.car_brand = driver.car.make?.toString();
+                                        this.rideService.driverInfo.car_model = driver.car.model?.toString();
+                                        this.rideService.driverInfo.car_color = driver.car.color?.toString();
+                                        this.rideService.driverInfo.car_license_plate = driver.car.plate_number?.toString();
+                                        this.imageUrl = driver.profile_img?.toString() || this.imageUrl; // Si no hay imagen, usa la imagen por defecto
+                                    },
+                                    err => console.log(err)
+                                  );
+                        } 
+                      });
+                      
 
-              });
+                    });
       }
       else{
         //We need to find the rideId.
@@ -327,6 +356,33 @@ export class PickupPage implements OnInit {
     this.showUserCanceledRideAlert();
   }
 
+  async openChat() {
+    if (!this.rideService.rideInfo.driverId || !this.rideId) {
+      this.util.showToast('No hay conductor asignado aún');
+      return;
+    }
+
+    const user = this.userProvider.getUserData();
+    const driverName = this.rideService.driverInfo.name || 'Conductor';
+    const clientName = user?.name || 'Usuario';
+
+    const modal = await this.modalCtrl.create({
+      component: ChatModalComponent,
+      componentProps: {
+        rideId: this.rideId,
+        driverId: this.rideService.rideInfo.driverId,
+        driverName: driverName,
+        clientId: user?.id || '',
+        clientName: clientName
+      },
+      cssClass: 'chat-modal',
+      showBackdrop: true,
+      backdropDismiss: true
+    });
+
+    await modal.present();
+  }
+
   async showDriverRejectedAlert() {
     this.util
       .presentAlert('Sorry!', environment.DRIVER_REJECTED_MSG, 'OK')
@@ -352,18 +408,33 @@ export class PickupPage implements OnInit {
   async showUserCanceledRideAlert() {
     this.util
       .presentAlert('Cancel Ride ?', environment.USER_CANCEL_MSG, 'OK')
-      .then(() => {
-        if (this.rideId == null || this.rideId.length == 0)
-          this.rideId = this.userProvider.getRideId().toString();
+      .then(async () => {
+        // Obtener el rideId si no está disponible
+        if (!this.rideId || this.rideId.length === 0) {
+          this.rideId = await this.userProvider.getRideId();
+        }
 
-          this.api.setRideRejected(this.rideId).subscribe(
-              (res) => {
-                this.clearRideStatusListener();
-                this.rideService.resetRideSettings();
-                this.router.navigate(['/tabs/tab1']);
-              },
-              (err) => console.log(err)
-            );
+        // Validar que tenemos un rideId válido
+        if (!this.rideId || this.rideId === null || this.rideId === '') {
+          console.error('❌ No se pudo obtener el rideId para cancelar el ride');
+          this.util.showToast('Error: No se pudo cancelar el ride');
+          return;
+        }
+
+        console.log('🔄 Cancelando ride con ID:', this.rideId);
+        
+        this.api.setRideRejected(this.rideId).subscribe(
+          (res) => {
+            console.log('✅ Ride cancelado exitosamente:', res);
+            this.clearRideStatusListener();
+            this.rideService.resetRideSettings();
+            this.router.navigate(['/tabs/tab1']);
+          },
+          (err) => {
+            console.error('❌ Error al cancelar el ride:', err);
+            this.util.showToast('Error al cancelar el ride');
+          }
+        );
       });
   }
 
@@ -379,10 +450,40 @@ export class PickupPage implements OnInit {
   }
 
   ionViewWillLeave() {
+    // NO limpiar el listener cuando se cambia de tab durante un ride activo
+    // El listener debe mantenerse activo para seguir monitoreando el estado del ride
+    // Solo se limpiará cuando:
+    // 1. El ride termine (completado, rechazado, cancelado) - manejado en checkRideStatus()
+    // 2. El componente se destruya completamente - manejado en ngOnDestroy()
+    const user = this.userProvider.getUserData();
+    if (user?.rideId) {
+      console.log('🚪 Saliendo de pickup - Ride activo detectado (rideId: ' + user.rideId + '), manteniendo listener activo');
+      // NO limpiar el listener, mantenerlo activo
+      return;
+    }
+    
+    // Solo limpiar si no hay rideId (no hay ride activo)
+    console.log('🚪 Saliendo de pickup - No hay ride activo, limpiando listener');
     this.clearRideStatusListener();
   }
 
   ngOnDestroy(): void {
+    // Limpiar el listener cuando el componente se destruye completamente
+    console.log('🗑️ Destruyendo componente pickup - limpiando listener');
+    this.clearRideStatusListener();
+    
+    // ✅ Limpiar todos los marcadores antes de destruir el componente
+    if (this.towTruckMarker) {
+      this.towTruckMarker.setMap(null);
+      this.towTruckMarker = null as any;
+    }
+    if (this.originMarker) {
+      this.originMarker.setMap(null);
+      this.originMarker = null as any;
+    }
+    this.markers.forEach((marker) => marker.setMap(null));
+    this.markers = [];
+    
     // Emitir valor para romper todas las suscripciones
     this.destroy$.next();
     this.destroy$.complete();
@@ -419,7 +520,7 @@ export class PickupPage implements OnInit {
                 true,
                 driver.location_lat,
                 driver.location_lng
-              ); //Add Custom Icons
+              ).catch(err => console.error('Error adding custom markers:', err)); //Add Custom Icons
               this.getTimer(response);
               this.fitMapToBounds(response.result.routes?.[0]);
 
@@ -468,7 +569,7 @@ export class PickupPage implements OnInit {
               false,
               rideInfo.origin_lat,
               rideInfo.origin_lng
-            ); //Add Custom Icons
+            ).catch(err => console.error('Error adding custom markers:', err)); //Add Custom Icons
             this.getTimer(response);
             this.fitMapToBounds(route);
           }
@@ -485,7 +586,7 @@ export class PickupPage implements OnInit {
       response.result.routes[0].legs[0].duration.text;
   }
 
-  addCustomMarkers(routeLeg: any, isDriver: boolean, lat: any, lnt: any) {
+  async addCustomMarkers(routeLeg: any, isDriver: boolean, lat: any, lnt: any) {
     if (!this.googleMap || !this.googleMap.googleMap) {
       console.error('Google Map instance is not available');
       return;
@@ -493,9 +594,26 @@ export class PickupPage implements OnInit {
 
     const mapInstance = this.googleMap.googleMap;
 
-    // Clear old markers
-    this.markers.forEach((marker) => marker.setMap(null));
+    // ✅ Clear old markers - Eliminar TODOS los marcadores, incluyendo los que están en propiedades separadas
+    // IMPORTANTE: Eliminar primero los marcadores individuales antes de limpiar el array
+    if (this.towTruckMarker) {
+      this.towTruckMarker.setMap(null);
+      this.towTruckMarker = null as any;
+    }
+    if (this.originMarker) {
+      this.originMarker.setMap(null);
+      this.originMarker = null as any;
+    }
+    // Limpiar todos los marcadores del array
+    this.markers.forEach((marker) => {
+      if (marker) {
+        marker.setMap(null);
+      }
+    });
     this.markers = [];
+    
+    // Pequeña pausa para asegurar que los marcadores se eliminen antes de crear nuevos
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // ✅ Tow Truck Marker (Dynamic)
     this.towTruckMarker = new google.maps.Marker({
@@ -507,14 +625,25 @@ export class PickupPage implements OnInit {
       },
     });
 
-    // ✅ End Marker (Destination Pin)
+    // ✅ End Marker (Destination Pin) - Usar marcador personalizado si es location3.png
+    let endMarkerIconUrl: string;
+    if (isDriver) {
+      // Usar marcador personalizado con foto del usuario
+      // Primero intentar usar la imagen guardada en memoria (evita problemas de CORS)
+      const imageInMemory = this.userProvider.getUserProfileImageUrl();
+      const loggedInUser = this.userProvider.getUserData();
+      // Si hay imagen en memoria, usarla; si no, pasar null para que use la imagen por defecto
+      const userImageUrl = imageInMemory || loggedInUser?.profile_img || null;
+      endMarkerIconUrl = await this.rideService.createCustomMarkerIcon(userImageUrl);
+    } else {
+      endMarkerIconUrl = '../../assets/images/pin.png';
+    }
+
     this.originMarker = new google.maps.Marker({
       position: routeLeg.end_location,
       map: mapInstance,
       icon: {
-        url: isDriver
-          ? '../../assets/images/location2.png'
-          : '../../assets/images/pin.png', // 🛠 Replace with actual destination icon
+        url: endMarkerIconUrl,
         scaledSize: new google.maps.Size(40, 40),
       },
     });

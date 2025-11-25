@@ -231,7 +231,11 @@ export class RegisterPage {
         console.log(res);
         this.userProvider.setToken(res['id']);
         this.api.getUser().subscribe(async (user: any) => {
-          this.userProvider.setLoggedInUser(user);
+          await this.userProvider.setLoggedInUser(user, false);
+          // Cargar imagen después de registro/autenticación
+          if (user?.profile_img && user.profile_img !== '') {
+            await this.userProvider.loadUserProfileImage(user.profile_img);
+          }
          // this.saveCard(user);
           await this.dismissLoader();
           this.utilService.presentAlert('Successful','Registration successful! Redirecting to login...', 'OK');
@@ -296,7 +300,11 @@ export class RegisterPage {
           console.log(res);
           this.userProvider.setToken(res['id']);
           this.api.getUser().subscribe(async (user: any) => {
-            this.userProvider.setLoggedInUser(user);
+            await this.userProvider.setLoggedInUser(user, false);
+            // Cargar imagen después de registro/autenticación
+            if (user?.profile_img && user.profile_img !== '') {
+              await this.userProvider.loadUserProfileImage(user.profile_img);
+            }
             await this.dismissLoader();
             this.utilService.presentAlert('Successful','Registration successful! Redirecting to login...', 'OK');
             this.router.navigate(['/tabs']);  // ✅ Redirect to login page

@@ -40,16 +40,25 @@ export class PhotoComponent  implements OnInit {
  async ngOnInit() {
 
   this.loggedInUser = this.userProvider.getUserData();
-  this.imageUrl = this.loggedInUser.profile_img?.toString() || 'https://firebasestorage.googleapis.com/v0/b/uar-platform.firebasestorage.app/o/photos%2FuserDefault.png?alt=media&token=ef06263c-9e2a-4e6d-9198-1898fd5c19df';
+  
+  // Primero intentar usar la imagen guardada en memoria (evita problemas de CORS)
+  const imageInMemory = this.userProvider.getUserProfileImageUrl();
+  if (imageInMemory) {
+    console.log('✅ Usando imagen del usuario guardada en memoria');
+    this.imageUrl = imageInMemory;
+  } else {
+    // Si no hay imagen en memoria, usar la URL original
+    this.imageUrl = this.loggedInUser.profile_img?.toString() || 'https://firebasestorage.googleapis.com/v0/b/uar-platform.firebasestorage.app/o/photos%2FuserDefault.png?alt=media&token=ef06263c-9e2a-4e6d-9198-1898fd5c19df';
 
-  this.camaraService.getImageUrl(this.imageUrl)
-    .then(url => {
-      this.imageUrl = url;
-    })
-    .catch(err => {
-      console.error('Error fetching image URL', err);
-      this.imageUrl = 'https://firebasestorage.googleapis.com/v0/b/uar-platform.firebasestorage.app/o/photos%2FuserDefault.png?alt=media&token=ef06263c-9e2a-4e6d-9198-1898fd5c19df'; // Default image if error occurs
-    });
+    this.camaraService.getImageUrl(this.imageUrl)
+      .then(url => {
+        this.imageUrl = url;
+      })
+      .catch(err => {
+        console.error('Error fetching image URL', err);
+        this.imageUrl = 'https://firebasestorage.googleapis.com/v0/b/uar-platform.firebasestorage.app/o/photos%2FuserDefault.png?alt=media&token=ef06263c-9e2a-4e6d-9198-1898fd5c19df'; // Default image if error occurs
+      });
+  }
     
 }
 

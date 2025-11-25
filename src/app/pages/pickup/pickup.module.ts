@@ -7,6 +7,7 @@ import { IonicModule } from '@ionic/angular';
 import { PickupPageRoutingModule } from './pickup-routing.module';
 
 import { PickupPage } from './pickup.page';
+import { ChatModalComponent } from '../../components/chat-modal/chat-modal.component';
 
 @NgModule({
   imports: [
@@ -15,6 +16,6 @@ import { PickupPage } from './pickup.page';
     IonicModule,GoogleMapsModule,
     PickupPageRoutingModule
   ],
-  declarations: [PickupPage]
+  declarations: [PickupPage, ChatModalComponent]
 })
 export class PickupPageModule {}

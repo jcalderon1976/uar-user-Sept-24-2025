@@ -28,4 +28,5 @@ export interface Ride extends BaseDatabaseModel{
   tow_type: string;
   createdAt:Timestamp;
   paymentMethod: string;
+  requestId?: string;
 }

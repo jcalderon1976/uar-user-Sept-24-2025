@@ -2,8 +2,8 @@
 <ion-content >
   
   <div class="googleMap">
-    <google-map  height="100%" width="100%" [center]="center" [options]="options" >
-            @if (directionsResults$ | async; as directionsResults) { <map-directions-renderer [directions]="directionsResults" [options]="{ polylineOptions: { strokeColor: '#000000', strokeOpacity: 1, strokeWeight: 6 }, suppressMarkers: false, preserveViewport: true }"  />  }
+    <google-map  height="100%" width="100%" [center]="center" [options]="options" #googleMap>
+            @if (directionsResults$ | async; as directionsResults) { <map-directions-renderer [directions]="directionsResults" [options]="{ polylineOptions: { strokeColor: '#000000', strokeOpacity: 1, strokeWeight: 6 }, suppressMarkers: false, preserveViewport: false }"  />  }
     </google-map>   
   </div>
   <ion-card>
@@ -14,7 +14,7 @@
         <ion-card-content>
           <br/>
           <div class="contentHead">
-            <span *ngIf="rideInfo && rideInfo.createdAt"> {{ rideInfo.createdAt.toDate()  | date   }}</span>
+            <span *ngIf="rideInfo && rideInfo.createdAt"> {{ rideInfo.createdAt.toDate() | date:'dd/MM/yyyy HH:mm'   }}</span>
             <span *ngIf="!rideInfo || !rideInfo.createdAt">Date not available</span>
             <span> {{ rideInfo.totalFare| currency:'USD':'symbol':'1.2-2' }}</span>
           </div>

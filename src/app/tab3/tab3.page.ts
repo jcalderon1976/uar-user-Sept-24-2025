@@ -31,8 +31,9 @@ export class Tab3Page {
     private router: Router
   ) {
     this.loggedInUser = this.userProvider.getUserData();
-    this.image =
-      this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
+    // Intentar usar la imagen guardada en memoria primero
+    const imageInMemory = this.userProvider.getUserProfileImageUrl();
+    this.image = imageInMemory || this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
   }
 
   ionViewWillLeave() {
@@ -62,11 +63,14 @@ export class Tab3Page {
       
       // Actualizar datos locales
       this.loggedInUser = this.userProvider.getUserData();
-      this.image =
-        this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
+      
+      // Intentar usar la imagen guardada en memoria primero
+      const imageInMemory = this.userProvider.getUserProfileImageUrl();
+      this.image = imageInMemory || this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
 
       if (this.photoComponent) {
-        this.photoComponent.imageUrl = this.image;
+        // Actualizar el componente de foto con la imagen en memoria si está disponible
+        this.photoComponent.imageUrl = imageInMemory || this.image;
       }
       
       console.log('Página refrescada con datos actualizados');
@@ -74,8 +78,8 @@ export class Tab3Page {
       console.error('Error al refrescar página:', error);
       // En caso de error, al menos actualizar desde memoria
       this.loggedInUser = this.userProvider.getUserData();
-      this.image =
-        this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
+      const imageInMemory = this.userProvider.getUserProfileImageUrl();
+      this.image = imageInMemory || this.loggedInUser.profile_img?.toString() || 'photos/userDefault.png';
     }
   }
 

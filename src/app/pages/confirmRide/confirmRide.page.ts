@@ -357,6 +357,19 @@ export class confirmRidePage implements OnInit {
    
     //Actualizo la base de datos
     Object.assign(this.ride ,this.rideService.rideInfo); //driver null
+    
+    // Asegurarse de que rideId tenga un valor válido
+    // Si this.rideId no está definido, intentar obtenerlo de rideService.rideInfo.id o del usuario
+    if (!this.rideId || this.rideId === '' || this.rideId === null || this.rideId === undefined) {
+      this.rideId = this.rideService.rideInfo.id || this.loggedInUser?.rideId;
+    }
+    
+    // Si aún no hay rideId, no podemos actualizar el ride
+    if (!this.rideId || this.rideId === '' || this.rideId === null || this.rideId === undefined) {
+      console.error('❌ Error: rideId no está definido. No se puede actualizar el ride.');
+      return;
+    }
+    
     this.ride.id = this.rideId;
     this.ride.paymentMethod = paymentMethod;
     this.ride.driverId = '';
@@ -367,6 +380,7 @@ export class confirmRidePage implements OnInit {
     this.ride.ride_completed = false;
     this.ride.request_timeout = false;
     console.dir('this.ride=>:' + this.ride);
+    console.log('🆔 Actualizando ride con ID:', this.rideId);
     this.api.updateRideData(this.rideId, this.ride);
   
   }

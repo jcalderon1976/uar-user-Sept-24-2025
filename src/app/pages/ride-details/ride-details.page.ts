@@ -10,8 +10,8 @@ import { NavParams, ModalController } from '@ionic/angular';
 import { RideService } from '../../services/ride/ride.service';
 import { APIService } from '../../services/api/api.service';
 import { environment } from '../../../environments/environment';
-import { map, Observable } from 'rxjs';
-import { MapDirectionsService } from '@angular/google-maps';
+import { map, Observable, first } from 'rxjs';
+import { MapDirectionsService, GoogleMap } from '@angular/google-maps';
 import { Ride } from 'src/app/models/ride';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
@@ -25,7 +25,8 @@ import { HistoryRide } from 'src/app/models/historyRides';
   standalone: true,
   imports: [CommonModule, IonicModule, GoogleMapsModule], // ✅ Import FormsModule
 })
-export class RideDetailsPage implements OnInit {
+export class RideDetailsPage implements OnInit, AfterViewInit {
+  @ViewChild('googleMap', { static: false }) googleMap!: GoogleMap;
   @Input() historyRide!: HistoryRide;   // tipa según tu modelo
   rideInfo!: Ride;
 
@@ -51,6 +52,7 @@ export class RideDetailsPage implements OnInit {
   vertices!: google.maps.LatLngLiteral[];
   markers = [];
   infoContent = '';
+  private hasFittedBounds = false; // Flag para evitar múltiples ajustes
 
   constructor(
     public modalController: ModalController,
@@ -61,7 +63,10 @@ export class RideDetailsPage implements OnInit {
   ) {}
 
   ngAfterViewInit() {
-
+    // Esperar a que el mapa esté listo y luego ajustar el zoom
+    setTimeout(() => {
+      this.fitMapToRoute();
+    }, 500);
   }
 
   ngOnInit() {
@@ -90,6 +95,16 @@ export class RideDetailsPage implements OnInit {
     this.directionsResults$ = this.mapDirectionsService
       .route(request)
       .pipe(map((response) => response.result));
+    
+    // Suscribirse a los resultados para ajustar el zoom cuando estén disponibles
+    this.directionsResults$.pipe(first()).subscribe((result) => {
+      if (result) {
+        // Esperar un poco para que el mapa se renderice
+        setTimeout(() => {
+          this.fitMapToRoute();
+        }, 300);
+      }
+    });
 
     // Subscribe to the origin address from the RideService.
     this.ride.getOrigin(this.rideInfo).subscribe({
@@ -136,5 +151,74 @@ export class RideDetailsPage implements OnInit {
 
   cancel() {
     this.modalController.dismiss(null, 'cancel');
+  }
+
+  /**
+   * Ajusta el zoom del mapa para mostrar toda la ruta
+   */
+  private fitMapToRoute(): void {
+    if (this.hasFittedBounds) {
+      return; // Ya se ajustó, no hacerlo de nuevo
+    }
+
+    const mapInstance = this.googleMap?.googleMap;
+    if (!mapInstance) {
+      console.warn('⚠️ Google Map instance no está disponible aún');
+      return;
+    }
+
+    // Si tenemos resultados de direcciones, usar esos para ajustar el zoom
+    this.directionsResults$.pipe(first()).subscribe((result) => {
+      if (result && result.routes && result.routes.length > 0) {
+        const route = result.routes[0];
+        const bounds = new google.maps.LatLngBounds();
+
+        // Agregar todos los puntos de la ruta al bounds
+        route.legs?.forEach((leg) => {
+          bounds.extend(leg.start_location);
+          bounds.extend(leg.end_location);
+
+          // Agregar todos los pasos de la ruta
+          leg.steps?.forEach((step) => {
+            step.path?.forEach((point) => {
+              bounds.extend(point);
+            });
+          });
+        });
+
+        if (!bounds.isEmpty()) {
+          mapInstance.fitBounds(bounds, {
+            top: 50,
+            right: 50,
+            bottom: 50,
+            left: 50,
+          });
+          this.hasFittedBounds = true;
+          console.log('✅ Zoom ajustado para mostrar toda la ruta');
+        }
+      } else {
+        // Si no hay resultados de direcciones, usar origen y destino
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({
+          lat: this.rideInfo.origin_lat,
+          lng: this.rideInfo.origin_lng,
+        });
+        bounds.extend({
+          lat: this.rideInfo.destination_lat,
+          lng: this.rideInfo.destination_lng,
+        });
+
+        if (!bounds.isEmpty()) {
+          mapInstance.fitBounds(bounds, {
+            top: 50,
+            right: 50,
+            bottom: 50,
+            left: 50,
+          });
+          this.hasFittedBounds = true;
+          console.log('✅ Zoom ajustado usando origen y destino');
+        }
+      }
+    });
   }
 }

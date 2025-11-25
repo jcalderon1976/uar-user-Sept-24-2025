@@ -87,7 +87,7 @@ export const environment = {
       elementType: 'geometry',
       stylers: [
         {
-          color: '#EFF1FF'
+          color: '#E1E4E8'
         }
       ]
     },
@@ -103,7 +103,7 @@ export const environment = {
       elementType: 'labels.text.fill',
       stylers: [
         {
-          color: '#6B6B6B'
+          color: '#424242'
         }
       ]
     },
@@ -111,7 +111,7 @@ export const environment = {
       elementType: 'labels.text.stroke',
       stylers: [
         {
-          color: '#D6D9FF'
+          color: '#FFFFFF'
         }
       ]
     },
@@ -120,7 +120,7 @@ export const environment = {
       elementType: 'labels.text.fill',
       stylers: [
         {
-          color: '#EEEEEE'
+          color: '#BDBDBD'
         }
       ]
     },
@@ -129,7 +129,7 @@ export const environment = {
       elementType: 'geometry',
       stylers: [
         {
-          color: '#D7DCEF'
+          color: '#E8E8E8'
         }
       ]
     },
@@ -138,7 +138,7 @@ export const environment = {
       elementType: 'labels.text.fill',
       stylers: [
         {
-          color: '#EEEEEE'
+          color: '#757575'
         }
       ]
     },
@@ -165,7 +165,16 @@ export const environment = {
       elementType: 'geometry',
       stylers: [
         {
-          color: '#ffffff'
+          color: '#FFFFFF'
+        }
+      ]
+    },
+    {
+      featureType: 'road.arterial',
+      elementType: 'geometry',
+      stylers: [
+        {
+          color: '#D0D0D0'
         }
       ]
     },
@@ -174,7 +183,7 @@ export const environment = {
       elementType: 'labels.text.fill',
       stylers: [
         {
-          color: '#757575'
+          color: '#424242'
         }
       ]
     },
@@ -183,7 +192,7 @@ export const environment = {
       elementType: 'geometry',
       stylers: [
         {
-          color: '#DEE0ED'
+          color: '#B8B8B8'
         }
       ]
     },
@@ -192,7 +201,16 @@ export const environment = {
       elementType: 'labels.text.fill',
       stylers: [
         {
-          color: '#4C4C4C'
+          color: '#212121'
+        }
+      ]
+    },
+    {
+      featureType: 'road.local',
+      elementType: 'geometry',
+      stylers: [
+        {
+          color: '#FFFFFF'
         }
       ]
     },
@@ -201,7 +219,7 @@ export const environment = {
       elementType: 'labels.text.fill',
       stylers: [
         {
-          color: '#9e9e9e'
+          color: '#616161'
         }
       ]
     },

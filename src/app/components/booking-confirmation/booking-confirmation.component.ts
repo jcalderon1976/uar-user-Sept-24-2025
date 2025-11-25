@@ -202,14 +202,17 @@ export class BookingConfirmationComponent implements OnInit, OnDestroy {
       console.log('paymentMethodCall =' + this.paymentMethodCall);
 
       if(this.paymentMethodCall === 'cash')
-      {
+      { 
+        ride.paymentMethod = 'cash';
+        this.api.updateRideData(this.rideId, ride);
         this.router.navigate(['/tabs/tab1/pickup']);
         this.modalCtrl.dismiss(data);
       }
       else if(this.paymentMethodCall === 'p2p')
       {
         try {
-          
+          ride.paymentMethod = 'creditCard';
+          this.api.updateRideData(this.rideId, ride);
           const res: any = await this.p2p.createPaymentSession(this.rideService.rideInfo.id, 
                                                                this.rideService.totalFee, 
                                                                this.loggedInUser , 

@@ -73,11 +73,12 @@ export class RideService {
   public confirm: boolean = false;
   public RequestRide: boolean = false;
   public PaymentMethod: boolean = false;
-  sourceIconUrl = 'assets/images/location2.png';
+  sourceIconUrl = 'assets/images/location3.png';
+  defaultUserImageUrl = 'assets/images/userDefault.png';
   sourceLocationSearch!: string;
   transaction!:P2pTrans;
   public loggedInUser!: User;
-  
+
   constructor(
     private api: APIService,
     private __zone: NgZone,
@@ -134,7 +135,8 @@ export class RideService {
       request_timeout: false,
       createdAt: Timestamp.fromDate(new Date()), // or any valid Timestamp value
       paymentMethod: '',
-      tow_type: ''
+      tow_type: '',
+      requestId: ''
     };
     
   }
@@ -194,6 +196,18 @@ export class RideService {
             lat: result.latitude,
             lng: result.longitude,
           };
+          
+          // Crear marcador personalizado con foto del usuario
+          // Asegurarse de que loggedInUser esté disponible
+          if (!this.loggedInUser) {
+            this.loggedInUser = this.userProvider.getUserData();
+          }
+          // Intentar usar la imagen guardada en memoria primero, luego la URL original
+          const imageInMemory = this.userProvider.getUserProfileImageUrl();
+          const userImageUrl = imageInMemory || this.loggedInUser?.profile_img || null;
+          console.log('👤 Usuario actual:', this.loggedInUser?.name, 'Imagen en memoria:', imageInMemory ? '✅' : '❌', 'Imagen URL:', this.loggedInUser?.profile_img);
+          const customIconUrl = await this.createCustomMarkerIcon(userImageUrl);
+          
           this.markers = [{
             lat:  result.latitude,
             lng:  result.longitude,
@@ -202,7 +216,7 @@ export class RideService {
             title: "test title",
             options: { animation: google.maps.Animation.DROP },
             icon: {
-              url: this.sourceIconUrl,
+              url: customIconUrl,
               scaledSize: new google.maps.Size(50, 50), // scaled size
               labelOrigin: new google.maps.Point(25, 60)
             } 
@@ -330,7 +344,8 @@ export class RideService {
       request_timeout: false,
       createdAt: Timestamp.fromDate(new Date()),
       paymentMethod: 'cash',
-      tow_type: ''
+      tow_type: '',
+      requestId: ''
     };
     
     Object.assign(this.rideInfo, ride);
@@ -342,6 +357,18 @@ export class RideService {
       lat: ride.origin_lat,
       lng: ride.origin_lng,
     };
+    
+    // Crear marcador personalizado con foto del usuario
+    // Asegurarse de que loggedInUser esté disponible
+    if (!this.loggedInUser) {
+      this.loggedInUser = this.userProvider.getUserData();
+    }
+    // Intentar usar la imagen guardada en memoria primero, luego la URL original
+    const imageInMemory = this.userProvider.getUserProfileImageUrl();
+    const userImageUrl = imageInMemory || this.loggedInUser?.profile_img || null;
+    console.log('👤 Usuario actual (setRideInfo):', this.loggedInUser?.name, 'Imagen en memoria:', imageInMemory ? '✅' : '❌', 'Imagen URL:', this.loggedInUser?.profile_img);
+    const customIconUrl = await this.createCustomMarkerIcon(userImageUrl);
+    
     this.markers = [{
       lat: ride.origin_lat,
       lng: ride.origin_lng,
@@ -350,7 +377,7 @@ export class RideService {
       position: this.center,
       title: "test title",
       icon: {
-        url: '../../assets/images/location2.png',
+        url: customIconUrl,
         scaledSize: new google.maps.Size(40, 40),
         labelOrigin: new google.maps.Point(25, 60)
        },
@@ -537,6 +564,367 @@ export class RideService {
 async clearRideInfoWhenUserCancel() {
 
 
+}
+
+/**
+ * Crea un marcador personalizado combinando el pin location3.png con la foto del usuario
+ * @param userImageUrl URL de la imagen del usuario (profile_img)
+ * @returns Promise<string> URL de la imagen combinada (data URL)
+ */
+async createCustomMarkerIcon(userImageUrl?: string | null): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Primero intentar usar la imagen guardada en memoria (evita problemas de CORS)
+      const imageInMemory = this.userProvider.getUserProfileImageUrl();
+      if (imageInMemory) {
+        console.log('✅ Usando imagen del usuario guardada en memoria (sin problemas de CORS)');
+        userImageUrl = imageInMemory;
+      } else if (!userImageUrl && this.loggedInUser?.profile_img) {
+        // Si no hay imagen en memoria pero hay una URL de perfil, usar esa
+        userImageUrl = this.loggedInUser.profile_img;
+        console.log('📷 Usando URL de perfil del usuario directamente:', userImageUrl);
+      }
+      
+      // Si estamos en desarrollo web y no hay imagen en memoria, y la URL es de Firebase Storage,
+      // intentar usar la URL original (puede fallar por CORS, pero lo intentaremos)
+      const isNative = Capacitor.isNativePlatform();
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isNative && isLocalhost && !imageInMemory && userImageUrl && 
+          (userImageUrl.includes('firebasestorage.googleapis.com') || userImageUrl.includes('firebase'))) {
+        console.log('⚠️ Desarrollo web detectado sin imagen en memoria');
+        console.log('⚠️ Intentando usar URL de Firebase directamente (puede fallar por CORS en canvas)');
+        // NO forzar null aquí - intentar usar la URL original
+        // Si falla, el código manejará el error y usará la imagen por defecto
+      }
+      
+      // Si no hay imagen de usuario, intentar usar la imagen por defecto
+      if (!userImageUrl || userImageUrl === '') {
+        console.log('📍 No hay imagen de usuario, intentando usar imagen por defecto');
+        // Intentar crear marcador con imagen por defecto
+        const pinImage = new Image();
+        const defaultImage = new Image();
+        
+        let pinLoaded = false;
+        let defaultLoaded = false;
+        
+        const createWithDefault = () => {
+          if (pinLoaded && defaultLoaded) {
+            try {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              
+              if (!ctx) {
+                resolve(this.sourceIconUrl);
+                return;
+              }
+              
+              const markerSize = 50;
+              canvas.width = markerSize;
+              canvas.height = markerSize;
+              
+              ctx.drawImage(pinImage, 0, 0, markerSize, markerSize);
+              
+              const photoSize = markerSize * 0.45;
+              const photoX = (markerSize - photoSize) / 2;
+              const photoY = markerSize * 0.12;
+              
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
+              ctx.clip();
+              ctx.drawImage(defaultImage, photoX, photoY, photoSize, photoSize);
+              ctx.restore();
+              
+              resolve(canvas.toDataURL('image/png'));
+            } catch (error) {
+              console.error('❌ Error creando marcador con imagen por defecto:', error);
+              resolve(this.sourceIconUrl);
+            }
+          }
+        };
+        
+        const pinPath = this.sourceIconUrl.startsWith('http') 
+          ? this.sourceIconUrl 
+          : `${window.location.origin}/${this.sourceIconUrl}`;
+        
+        pinImage.onload = () => {
+          pinLoaded = true;
+          createWithDefault();
+        };
+        pinImage.onerror = () => resolve(this.sourceIconUrl);
+        pinImage.src = pinPath;
+        
+        const defaultPath = this.defaultUserImageUrl.startsWith('http') 
+          ? this.defaultUserImageUrl 
+          : `${window.location.origin}/${this.defaultUserImageUrl}`;
+        
+        defaultImage.onload = () => {
+          defaultLoaded = true;
+          createWithDefault();
+        };
+        defaultImage.onerror = () => resolve(this.sourceIconUrl);
+        defaultImage.src = defaultPath;
+        
+        return;
+      }
+
+      console.log('🖼️ Creando marcador personalizado con imagen:', userImageUrl);
+
+      const pinImage = new Image();
+      const userImage = new Image();
+      
+      // Verificar si es un blob URL (imagen en memoria)
+      const isBlobUrl = userImageUrl.startsWith('blob:');
+      
+      // IMPORTANTE: Establecer crossOrigin solo para URLs HTTP/HTTPS (no para blob URLs)
+      // Los blob URLs son locales y no requieren crossOrigin
+      if (!isBlobUrl && (userImageUrl.startsWith('http://') || userImageUrl.startsWith('https://'))) {
+        userImage.crossOrigin = 'anonymous';
+      }
+      
+      // Para el pin local, también establecer crossOrigin si es necesario
+      if (this.sourceIconUrl.startsWith('http://') || this.sourceIconUrl.startsWith('https://')) {
+        pinImage.crossOrigin = 'anonymous';
+      }
+
+      let pinLoaded = false;
+      let userLoaded = false;
+      let userImageFailed = false;
+      let defaultImageLoaded = false;
+      const defaultImage = new Image();
+
+      const checkAndCreate = () => {
+        if (pinLoaded && (userLoaded || userImageFailed || defaultImageLoaded)) {
+          try {
+            // Crear canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx) {
+              console.error('❌ No se pudo obtener el contexto del canvas');
+              resolve(this.sourceIconUrl);
+              return;
+            }
+
+            // Tamaño del marcador final
+            const markerSize = 50;
+            canvas.width = markerSize;
+            canvas.height = markerSize;
+
+            // Dibujar el pin de fondo
+            ctx.drawImage(pinImage, 0, 0, markerSize, markerSize);
+
+            // Calcular posición y tamaño de la foto dentro del pin
+            const photoSize = markerSize * 0.45; // 45% del tamaño del pin
+            const photoX = (markerSize - photoSize) / 2;
+            const photoY = markerSize * 0.12; // Posición más arriba para el círculo del pin
+
+            // Determinar qué imagen usar: la del usuario o la por defecto
+            let imageToUse: HTMLImageElement | null = null;
+            
+            if (userLoaded && !userImageFailed && userImage.complete && userImage.naturalWidth > 0) {
+              imageToUse = userImage;
+              console.log('✅ Usando imagen del usuario');
+            } else if (defaultImageLoaded && defaultImage.complete && defaultImage.naturalWidth > 0) {
+              imageToUse = defaultImage;
+              console.log('✅ Usando imagen por defecto (userDefault.png)');
+            }
+
+            // Si hay una imagen para usar, dibujarla
+            if (imageToUse) {
+              // Crear un círculo para recortar la foto
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(
+                photoX + photoSize / 2,
+                photoY + photoSize / 2,
+                photoSize / 2,
+                0,
+                Math.PI * 2
+              );
+              ctx.clip();
+
+              // Dibujar la foto
+              ctx.drawImage(imageToUse, photoX, photoY, photoSize, photoSize);
+              ctx.restore();
+              
+              console.log('✅ Marcador personalizado creado exitosamente');
+            } else {
+              console.log('⚠️ No hay imagen disponible, usando solo el pin');
+            }
+
+            // Convertir canvas a data URL
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+          } catch (error) {
+            console.error('❌ Error creando marcador personalizado:', error);
+            resolve(this.sourceIconUrl);
+          }
+        }
+      };
+
+      // Cargar imagen del pin
+      pinImage.onload = () => {
+        console.log('✅ Pin image cargado');
+        pinLoaded = true;
+        checkAndCreate();
+      };
+      pinImage.onerror = (error) => {
+        console.error('❌ Error cargando pin image:', error);
+        resolve(this.sourceIconUrl);
+      };
+      
+      // Usar ruta absoluta para el pin
+      const pinPath = this.sourceIconUrl.startsWith('http') 
+        ? this.sourceIconUrl 
+        : `${window.location.origin}/${this.sourceIconUrl}`;
+      pinImage.src = pinPath;
+
+      // Función para cargar la imagen por defecto
+      const loadDefaultImage = () => {
+        const defaultPath = this.defaultUserImageUrl.startsWith('http') 
+          ? this.defaultUserImageUrl 
+          : `${window.location.origin}/${this.defaultUserImageUrl}`;
+        
+        defaultImage.onload = () => {
+          console.log('✅ Imagen por defecto cargada exitosamente');
+          defaultImageLoaded = true;
+          checkAndCreate();
+        };
+        
+        defaultImage.onerror = (error) => {
+          console.error('❌ Error cargando imagen por defecto:', error);
+          console.warn('⚠️ Se mostrará solo el pin');
+          checkAndCreate();
+        };
+        
+        defaultImage.src = defaultPath;
+      };
+
+      // Cargar imagen del usuario
+      // Si es un blob URL (imagen en memoria), cargarlo directamente sin crossOrigin
+      if (isBlobUrl) {
+        console.log('✅ Cargando imagen desde blob URL (imagen en memoria)');
+        userImage.onload = () => {
+          console.log('✅ User image cargada desde blob URL, dimensiones:', userImage.naturalWidth, 'x', userImage.naturalHeight);
+          userLoaded = true;
+          checkAndCreate();
+        };
+        userImage.onerror = (error) => {
+          console.error('❌ Error cargando imagen desde blob URL:', error);
+          console.warn('⚠️ Intentando cargar imagen por defecto...');
+          userImageFailed = true;
+          userLoaded = false;
+          loadDefaultImage();
+        };
+        userImage.src = userImageUrl;
+      } else if (userImageUrl.startsWith('http://') || userImageUrl.startsWith('https://')) {
+        const isNative = Capacitor.isNativePlatform();
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        // En desarrollo web con Firebase Storage, es probable que haya problemas de CORS
+        // Intentar cargar, pero si falla rápidamente, usar el pin por defecto
+        if (!isNative && isLocalhost && userImageUrl.includes('firebasestorage.googleapis.com')) {
+          console.warn('⚠️ Desarrollo web detectado con Firebase Storage - puede haber problemas de CORS');
+          console.warn('⚠️ En dispositivos nativos (Android/iOS) esto funcionará correctamente');
+        }
+        
+        // Intentar cargar directamente primero (más rápido)
+        userImage.crossOrigin = 'anonymous';
+        
+        userImage.onload = () => {
+          console.log('✅ User image cargada directamente, dimensiones:', userImage.naturalWidth, 'x', userImage.naturalHeight);
+          userLoaded = true;
+          checkAndCreate();
+        };
+        
+        userImage.onerror = () => {
+          console.warn('⚠️ Error cargando imagen directamente (posible problema de CORS en desarrollo web)');
+          console.warn('⚠️ Intentando con HttpClient como fallback...');
+          
+          // Si falla la carga directa, intentar con HttpClient como fallback
+          // Verificar que userImageUrl no sea null o undefined
+          if (!userImageUrl) {
+            console.warn('⚠️ URL de imagen no válida, intentando cargar imagen por defecto...');
+            userImageFailed = true;
+            userLoaded = false;
+            loadDefaultImage();
+            return;
+          }
+          
+          this.http.get(userImageUrl, { responseType: 'blob' }).subscribe({
+            next: (blob) => {
+              console.log('✅ Imagen obtenida como blob');
+              const blobUrl = URL.createObjectURL(blob);
+              
+              // Crear nueva imagen para el blob
+              const blobImage = new Image();
+              blobImage.onload = () => {
+                console.log('✅ User image cargada desde blob, dimensiones:', blobImage.naturalWidth, 'x', blobImage.naturalHeight);
+                URL.revokeObjectURL(blobUrl);
+                // Usar la imagen del blob
+                userImage.src = blobUrl;
+                userLoaded = true;
+                checkAndCreate();
+              };
+              blobImage.onerror = () => {
+                console.warn('⚠️ Error cargando imagen desde blob, intentando cargar imagen por defecto...');
+                URL.revokeObjectURL(blobUrl);
+                userImageFailed = true;
+                userLoaded = false;
+                // Intentar cargar la imagen por defecto
+                loadDefaultImage();
+              };
+              blobImage.src = blobUrl;
+            },
+            error: (error) => {
+              console.error('❌ Error obteniendo imagen con HttpClient:', error);
+              if (error.status === 0) {
+                console.warn('⚠️ Problema de CORS detectado - esto es normal en desarrollo web');
+                console.warn('⚠️ En dispositivos nativos (Android/iOS) la imagen se cargará correctamente');
+              }
+              console.warn('⚠️ No se pudo cargar la imagen del usuario, intentando cargar imagen por defecto...');
+              userImageFailed = true;
+              userLoaded = false;
+              // Intentar cargar la imagen por defecto
+              loadDefaultImage();
+            }
+          });
+        };
+        
+        userImage.src = userImageUrl;
+      } else {
+        // Para imágenes locales, cargar directamente
+        userImage.onload = () => {
+          console.log('✅ User image cargada (local), dimensiones:', userImage.naturalWidth, 'x', userImage.naturalHeight);
+          userLoaded = true;
+          checkAndCreate();
+        };
+        userImage.onerror = (error) => {
+          console.error('❌ Error cargando imagen del usuario (local):', error);
+          console.warn('⚠️ Intentando cargar imagen por defecto...');
+          userImageFailed = true;
+          userLoaded = false;
+          // Intentar cargar la imagen por defecto
+          loadDefaultImage();
+        };
+        userImage.src = userImageUrl;
+      }
+      
+      // Timeout de seguridad (5 segundos)
+      setTimeout(() => {
+        if (!userLoaded && !userImageFailed && !defaultImageLoaded) {
+          console.warn('⏱️ Timeout cargando imagen del usuario, intentando cargar imagen por defecto...');
+          userImageFailed = true;
+          loadDefaultImage();
+        }
+      }, 5000);
+      
+    } catch (error) {
+      console.error('❌ Error en createCustomMarkerIcon:', error);
+      resolve(this.sourceIconUrl);
+    }
+  });
 }
 
 

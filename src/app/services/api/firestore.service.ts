@@ -72,6 +72,10 @@ export class FirestoreService implements OnDestroy {
   }
 
   async update<T extends BaseDatabaseModel>(collectionName: string, id: string, document: Partial<T>): Promise<void> {
+    // Validar que el id sea válido antes de intentar crear la referencia del documento
+    if (!id || id === '' || id === null || id === undefined) {
+      throw new Error(`Cannot update document: invalid id provided. Collection: ${collectionName}, ID: ${id}`);
+    }
     const ref = doc(this.firestore, collectionName, id) as DocumentReference<T>;
     await updateDoc(ref, this.addUpdatedAt(document));
   }
